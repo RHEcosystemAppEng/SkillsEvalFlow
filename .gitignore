@@ -1,0 +1,29 @@
+# Virtual environment
+.venv/
+
+# IDE
+.idea/
+.vscode/
+
+# AI agent config (project-local, not shared)
+.cursor/
+.claude/
+
+# Plan review suggestions (working documents, not deliverables)
+Docs/plan_suggestions/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db

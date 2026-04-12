@@ -23,6 +23,8 @@ spec:
                 - key: skill_directory
                   # Extract the first subdirectory under submissions/
                   # e.g. submissions/my-skill/SKILL.md -> my-skill
+                  # NOTE: single-skill-per-push assumed; multi-skill pushes
+                  # only evaluate the first skill found.
                   expression: >-
                     body.commits.map(c,
                       c.added + c.modified

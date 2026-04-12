@@ -1,0 +1,43 @@
+[project]
+name = "skillsevalflow"
+version = "0.1.0"
+description = "Automated Tekton pipeline on OpenShift for evaluating AI skill submissions"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+    "matplotlib>=3.8",
+    "scipy>=1.11",
+    "seaborn>=0.13",
+    "kubernetes>=28.0",
+    "tenacity>=8.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["skillsevalflow"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

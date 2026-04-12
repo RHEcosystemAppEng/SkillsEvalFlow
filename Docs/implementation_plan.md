@@ -76,8 +76,6 @@ SkillsEvalFlow/
 │   ├── generate_tests.py           # AI-generated tests (optional path)
 │   ├── ai_review.py                # Independent AI evaluation
 │   └── monitor.py                  # Degradation detection (Phase 9)
-├── harbor-backend/                 # OpenShift backend for Harbor
-│   └── openshift_environment.py    # New environment backend
 ├── config/                         # K8s manifests for supporting infra
 │   ├── litellm-config.yaml         # Optional: only for Vertex AI mode
 │   └── pipeline-config.yaml
@@ -132,7 +130,7 @@ A skill submission directory must follow this structure:
 ```
 my-skill-name/
 ├── instruction.md          # Task description (required, non-empty)
-├── skills/                 # Skill files — at least one .md (required)
+├── skills/                 # Must contain SKILL.md (required, canonical name)
 ├── docs/                   # Reference documentation (optional)
 ├── tests/
 │   ├── test_outputs.py     # Verification tests (required, must compile)
@@ -155,7 +153,7 @@ my-skill-name/
 
 Checks to implement:
 1. `instruction.md` exists and is non-empty.
-2. `skills/` directory contains at least one `.md` file.
+2. `skills/SKILL.md` exists and is non-empty (canonical filename for agent recognition).
 3. `test_outputs.py` compiles (`py_compile`).
 4. `llm_judge.py` compiles if present.
 5. `metadata.yaml` passes Pydantic schema validation.
@@ -271,7 +269,7 @@ Use digest-based references (not mutable tags) between tasks to avoid tag mutati
 
 ## Phase 4 — Harbor OpenShift Backend (Step 6)
 
-### 4.1 OpenShift Environment Backend (`harbor-backend/openshift_environment.py`)
+### 4.1 OpenShift Environment Backend (in Harbor fork)
 
 **Goal:** Create a new `OpenShiftEnvironment` class extending `BaseEnvironment` (from `src/harbor/environments/base.py`) in the [Harbor fork](https://github.com/GuyZivRH/skills_eval_corrections).
 

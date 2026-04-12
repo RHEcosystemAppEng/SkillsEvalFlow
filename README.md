@@ -25,7 +25,6 @@ SkillsEvalFlow/
 │   └── tasks/               # validate, scaffold, build-push, harbor-eval, analyze-report, publish-store
 ├── templates/               # Jinja2 templates (Dockerfiles, test.sh, task.toml)
 ├── scripts/                 # Python scripts invoked by pipeline tasks
-├── harbor-backend/          # OpenShift environment backend for Harbor
 ├── config/                  # K8s manifests (RBAC, LiteLLM, pipeline config)
 └── tests/                   # Unit and integration tests
 ```
@@ -44,7 +43,7 @@ A skill submission directory follows this structure:
 ```
 my-skill-name/
 ├── instruction.md       # Task description (required)
-├── skills/              # Skill files — at least one .md (required)
+├── skills/              # Must contain SKILL.md (required, canonical name)
 ├── docs/                # Reference documentation (optional)
 ├── tests/
 │   ├── test_outputs.py  # Verification tests (required)

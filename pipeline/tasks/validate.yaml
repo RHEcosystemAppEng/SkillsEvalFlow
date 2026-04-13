@@ -38,6 +38,9 @@ spec:
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
+        # Resource guard: reject oversized submissions (e.g. accidental binary
+        # uploads) before they consume PVC storage and slow down the pipeline.
+        # Minimum content checks (required files) are handled by validate.py.
         WORKSPACE_DIR="$(workspaces.source.path)"
         MAX_MB=$(params.max-workspace-mb)
         SIZE_KB=$(du -sk "$WORKSPACE_DIR" | cut -f1)

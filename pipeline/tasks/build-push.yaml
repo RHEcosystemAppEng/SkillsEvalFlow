@@ -38,7 +38,7 @@ spec:
     - name: unskilled-image-ref
       description: Digest-based reference for the unskilled image
   steps:
-    - name: build-skilled
+    - name: build-push-skilled
       image: registry.access.redhat.com/ubi9/buildah:latest
       securityContext:
         capabilities:
@@ -48,36 +48,32 @@ spec:
         set -euo pipefail
         CONTEXT_DIR="$(params.skilled-task-dir)/environment"
         IMAGE_TAG="$(params.registry-url)/$(params.registry-namespace)/$(params.skill-name):skilled-$(params.commit-sha)"
+        REGISTRY="$(params.registry-url)"
 
-        buildah bud \
+        buildah login \
+          --tls-verify=false \
+          -u serviceaccount \
+          -p "$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+          "$REGISTRY"
+
+        buildah build \
           --storage-driver=vfs \
-          --layers \
           -t "$IMAGE_TAG" \
           "$CONTEXT_DIR"
 
-        echo "Built skilled image: $IMAGE_TAG"
-
-    - name: push-skilled
-      image: registry.access.redhat.com/ubi9/buildah:latest
-      securityContext:
-        capabilities:
-          add: ["SETFCAP"]
-      script: |
-        #!/usr/bin/env bash
-        set -euo pipefail
-        IMAGE_TAG="$(params.registry-url)/$(params.registry-namespace)/$(params.skill-name):skilled-$(params.commit-sha)"
-
-        DIGEST=$(buildah push \
+        buildah push \
           --storage-driver=vfs \
+          --tls-verify=false \
           --digestfile /tmp/skilled-digest \
           "$IMAGE_TAG" \
-          "docker://$IMAGE_TAG" 2>&1 && cat /tmp/skilled-digest)
+          "docker://$IMAGE_TAG"
 
+        DIGEST=$(cat /tmp/skilled-digest)
         IMAGE_REF="$(params.registry-url)/$(params.registry-namespace)/$(params.skill-name)@${DIGEST}"
         echo -n "$IMAGE_REF" > "$(results.skilled-image-ref.path)"
         echo "Pushed skilled image: $IMAGE_REF"
 
-    - name: build-unskilled
+    - name: build-push-unskilled
       image: registry.access.redhat.com/ubi9/buildah:latest
       securityContext:
         capabilities:
@@ -87,31 +83,27 @@ spec:
         set -euo pipefail
         CONTEXT_DIR="$(params.unskilled-task-dir)/environment"
         IMAGE_TAG="$(params.registry-url)/$(params.registry-namespace)/$(params.skill-name):unskilled-$(params.commit-sha)"
+        REGISTRY="$(params.registry-url)"
 
-        buildah bud \
+        buildah login \
+          --tls-verify=false \
+          -u serviceaccount \
+          -p "$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+          "$REGISTRY"
+
+        buildah build \
           --storage-driver=vfs \
-          --layers \
           -t "$IMAGE_TAG" \
           "$CONTEXT_DIR"
 
-        echo "Built unskilled image: $IMAGE_TAG"
-
-    - name: push-unskilled
-      image: registry.access.redhat.com/ubi9/buildah:latest
-      securityContext:
-        capabilities:
-          add: ["SETFCAP"]
-      script: |
-        #!/usr/bin/env bash
-        set -euo pipefail
-        IMAGE_TAG="$(params.registry-url)/$(params.registry-namespace)/$(params.skill-name):unskilled-$(params.commit-sha)"
-
-        DIGEST=$(buildah push \
+        buildah push \
           --storage-driver=vfs \
+          --tls-verify=false \
           --digestfile /tmp/unskilled-digest \
           "$IMAGE_TAG" \
-          "docker://$IMAGE_TAG" 2>&1 && cat /tmp/unskilled-digest)
+          "docker://$IMAGE_TAG"
 
+        DIGEST=$(cat /tmp/unskilled-digest)
         IMAGE_REF="$(params.registry-url)/$(params.registry-namespace)/$(params.skill-name)@${DIGEST}"
         echo -n "$IMAGE_REF" > "$(results.unskilled-image-ref.path)"
         echo "Pushed unskilled image: $IMAGE_REF"

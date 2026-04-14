@@ -72,16 +72,7 @@ def _build_template_context(
         "storage_mb": metadata.storage_mb,
     }
 
-    ctx = strategy.customize_context(base_context, variant, submission_dir)
-
-    # Map to old template name until templates are unified (Dockerfile.j2).
-    # task.toml.j2 uses `{% if variant == "skilled" %}` to emit skills_dir.
-    if ctx.get("skills_dir"):
-        ctx["variant"] = "skilled"
-    else:
-        ctx["variant"] = "unskilled"
-
-    return ctx
+    return strategy.customize_context(base_context, variant, submission_dir)
 
 
 def _render_templates(
@@ -89,10 +80,8 @@ def _render_templates(
     context: dict,
 ) -> dict[str, str]:
     """Render all templates for a variant, returning {filename: content}."""
-    template_variant = context.get("variant", "skilled")
-    dockerfile_template = f"Dockerfile.{template_variant}.j2"
     return {
-        "Dockerfile": jinja_env.get_template(dockerfile_template).render(context),
+        "Dockerfile": jinja_env.get_template("Dockerfile.j2").render(context),
         "test.sh": jinja_env.get_template("test.sh.j2").render(context),
         "task.toml": jinja_env.get_template("task.toml.j2").render(context),
     }

@@ -67,6 +67,35 @@ class TestSubmissionMetadata:
         with pytest.raises(ValidationError):
             SubmissionMetadata(**data)
 
+    def test_name_with_spaces_rejected(self) -> None:
+        data = {**VALID_METADATA, "name": "My Skill"}
+        with pytest.raises(ValidationError, match="OCI-safe"):
+            SubmissionMetadata(**data)
+
+    def test_name_with_uppercase_rejected(self) -> None:
+        data = {**VALID_METADATA, "name": "MySkill"}
+        with pytest.raises(ValidationError, match="OCI-safe"):
+            SubmissionMetadata(**data)
+
+    def test_name_starting_with_hyphen_rejected(self) -> None:
+        data = {**VALID_METADATA, "name": "-my-skill"}
+        with pytest.raises(ValidationError, match="OCI-safe"):
+            SubmissionMetadata(**data)
+
+    def test_name_with_trailing_separator_rejected(self) -> None:
+        data = {**VALID_METADATA, "name": "my-skill-"}
+        with pytest.raises(ValidationError, match="OCI-safe"):
+            SubmissionMetadata(**data)
+
+    def test_name_with_consecutive_dots_rejected(self) -> None:
+        data = {**VALID_METADATA, "name": "my..skill"}
+        with pytest.raises(ValidationError, match="OCI-safe"):
+            SubmissionMetadata(**data)
+
+    def test_name_with_dots_and_underscores_valid(self) -> None:
+        model = SubmissionMetadata(**{**VALID_METADATA, "name": "my_skill.v2"})
+        assert model.name == "my_skill.v2"
+
     def test_invalid_generation_mode(self) -> None:
         data = {**VALID_METADATA, "generation_mode": "unknown"}
         with pytest.raises(ValidationError):

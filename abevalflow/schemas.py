@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 CURRENT_SCHEMA_VERSION = "1.0"
 
 _SCHEMA_VERSION_RE = re.compile(r"\d+\.\d+")
+_OCI_NAME_RE = re.compile(r"[a-z0-9]+(?:[._-][a-z0-9]+)*")
 
 
 class GenerationMode(StrEnum):
@@ -130,7 +131,18 @@ class SubmissionMetadata(BaseModel):
             raise ValueError("schema_version must be in 'MAJOR.MINOR' format (e.g. '1.0')")
         return v
 
-    name: str = Field(min_length=1, description="Skill name, must be non-empty")
+    name: str = Field(min_length=1, description="Submission name (OCI-safe: lowercase, alphanumeric, hyphens, dots, underscores)")
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, v: str) -> str:
+        if not _OCI_NAME_RE.fullmatch(v):
+            raise ValueError(
+                "name must be OCI-safe: lowercase alphanumeric, hyphens, dots, "
+                "underscores only, starting with alphanumeric"
+            )
+        return v
+
     description: str | None = Field(default=None, description="Brief description of the skill")
     persona: str | None = Field(
         default=None,

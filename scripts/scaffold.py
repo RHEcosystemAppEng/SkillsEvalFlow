@@ -162,8 +162,7 @@ def scaffold_submission(
             if filename == "test.sh":
                 dest.chmod(dest.stat().st_mode | stat.S_IEXEC)
 
-        copy_specs = strategy.variant_copy_specs(submission_dir, variant)
-        strategy_srcs = [spec.src for spec in copy_specs]
+        strategy_srcs = [src for src, _ in context.get("copy_pairs", [])]
         _copy_submission_files(submission_dir, environment_dir, strategy_srcs)
 
         # Second copy at task root: Harbor reads instruction.md from the task

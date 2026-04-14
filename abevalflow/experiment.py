@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-from abevalflow.schemas import CopySpec, ExperimentConfig, ExperimentType
+from abevalflow.schemas import CopySpec, ExperimentConfig, ExperimentType, VariantSpec
 
 
 class ExperimentStrategy(Protocol):
@@ -47,7 +47,7 @@ def _skills_dir_from_specs(specs: list[CopySpec]) -> str | None:
     return None
 
 
-def _get_variant_spec(config: ExperimentConfig, variant: str):
+def _get_variant_spec(config: ExperimentConfig, variant: str) -> VariantSpec:
     return config.treatment if variant == "treatment" else config.control
 
 

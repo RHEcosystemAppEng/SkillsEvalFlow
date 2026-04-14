@@ -1,4 +1,4 @@
-# Trigger Guide — SkillsEvalFlow Pipeline
+# Trigger Guide — ABEvalFlow Pipeline
 
 ## How the Pipeline is Triggered
 
@@ -50,7 +50,7 @@ The EventListener route is created automatically when the EventListener is
 deployed. To find it:
 
 ```bash
-oc get route -n skills-eval-flow -l eventlistener=skills-submission-listener
+oc get route -n ab-eval-flow -l eventlistener=skills-submission-listener
 ```
 
 ## Manual Trigger (for Testing)
@@ -65,7 +65,7 @@ tkn pipeline start skills-eval-pipeline \
   -p revision=main \
   -p skill-dir=my-skill \
   -w name=shared-workspace,volumeClaimTemplateFile=pipeline/triggers/pvc-template.yaml \
-  -n skills-eval-flow
+  -n ab-eval-flow
 ```
 
 ### Option 2: PipelineRun YAML
@@ -75,7 +75,7 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   generateName: skills-eval-manual-
-  namespace: skills-eval-flow
+  namespace: ab-eval-flow
 spec:
   pipelineRef:
     name: skills-eval-pipeline
@@ -100,7 +100,7 @@ spec:
 Apply with:
 
 ```bash
-oc create -f pipelinerun.yaml -n skills-eval-flow
+oc create -f pipelinerun.yaml -n ab-eval-flow
 ```
 
 ## How the CEL Interceptor Works

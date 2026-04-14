@@ -1,5 +1,5 @@
 [project]
-name = "skillsevalflow"
+name = "abevalflow"
 version = "0.1.0"
 description = "Automated Tekton pipeline on OpenShift for evaluating AI skill submissions"
 readme = "README.md"
@@ -36,7 +36,7 @@ line-length = 100
 select = ["E", "F", "I", "UP", "W"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["skillsevalflow"]
+packages = ["abevalflow"]
 
 [build-system]
 requires = ["hatchling"]

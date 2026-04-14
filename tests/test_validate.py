@@ -1,4 +1,4 @@
-"""Tests for scripts/validate.py and skillsevalflow/schemas.py."""
+"""Tests for scripts/validate.py and abevalflow/schemas.py."""
 
 import json
 import shutil
@@ -13,7 +13,7 @@ from scripts.validate import (
     main,
     validate_submission,
 )
-from skillsevalflow.schemas import GenerationMode, SubmissionMetadata
+from abevalflow.schemas import GenerationMode, SubmissionMetadata
 
 VALID_METADATA = {
     "schema_version": "1.0",

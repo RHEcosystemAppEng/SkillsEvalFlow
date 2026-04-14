@@ -21,7 +21,7 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from skillsevalflow.schemas import SubmissionMetadata
+from abevalflow.schemas import SubmissionMetadata
 
 logger = logging.getLogger(__name__)
 

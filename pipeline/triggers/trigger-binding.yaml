@@ -2,7 +2,7 @@ apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata:
   name: skills-submission-binding
-  namespace: skills-eval-flow
+  namespace: ab-eval-flow
 spec:
   params:
     - name: repo-url

@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: scaffold-submission
-  namespace: skills-eval-flow
+  namespace: ab-eval-flow
 spec:
   description: >-
     Generates skilled and unskilled Harbor task directories from a validated
@@ -17,8 +17,8 @@ spec:
       description: Validated skill name (from validate-submission results)
     - name: pipeline-repo-url
       type: string
-      default: "https://github.com/RHEcosystemAppEng/SkillsEvalFlow.git"
-      description: URL of the SkillsEvalFlow pipeline repository
+      default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      description: URL of the ABEvalFlow pipeline repository
     - name: pipeline-repo-revision
       type: string
       default: "main"

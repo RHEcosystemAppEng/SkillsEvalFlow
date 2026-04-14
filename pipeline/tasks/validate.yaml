@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: validate-submission
-  namespace: skills-eval-flow
+  namespace: ab-eval-flow
 spec:
   description: >-
     Validates a skill submission directory against the submission contract.
@@ -18,8 +18,8 @@ spec:
       description: Maximum allowed workspace size in MB (guards against oversized submissions)
     - name: pipeline-repo-url
       type: string
-      default: "https://github.com/RHEcosystemAppEng/SkillsEvalFlow.git"
-      description: URL of the SkillsEvalFlow pipeline repository
+      default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      description: URL of the ABEvalFlow pipeline repository
     - name: pipeline-repo-revision
       type: string
       default: "main"

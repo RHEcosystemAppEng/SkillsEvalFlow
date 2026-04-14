@@ -1,4 +1,4 @@
-# SkillsEvalFlow
+# ABEvalFlow
 
 Automated Tekton-orchestrated pipeline on OpenShift for evaluating AI skill submissions. Measures skill efficacy by comparing agent performance with and without skills (the "gap"), producing statistical reports with pass rates, uplift metrics, and significance tests.
 
@@ -17,7 +17,7 @@ Automated Tekton-orchestrated pipeline on OpenShift for evaluating AI skill subm
 ## Repository Structure
 
 ```
-SkillsEvalFlow/
+ABEvalFlow/
 ├── Docs/                    # ADR, implementation plan
 ├── pipeline/                # Tekton pipeline and task definitions
 │   ├── pipeline.yaml

@@ -387,3 +387,70 @@ class TestScaffoldExperimentConfig:
         from abevalflow.schemas import SubmissionMetadata
         parsed = SubmissionMetadata(**yaml.safe_load(meta_path.read_text()))
         assert parsed.experiment.n_trials == 42
+
+    def test_prompt_experiment_identical_to_skill(self, valid_submission: Path, tmp_path: Path):
+        """Prompt experiments use the same scaffold behavior as skill experiments."""
+        output_skill = tmp_path / "output-skill"
+        scaffold_submission(valid_submission, output_skill, TEMPLATES_DIR)
+
+        meta_path = valid_submission / "metadata.yaml"
+        meta = yaml.safe_load(meta_path.read_text())
+        meta["experiment"] = {"type": "prompt"}
+        meta_path.write_text(yaml.dump(meta))
+
+        output_prompt = tmp_path / "output-prompt"
+        scaffold_submission(valid_submission, output_prompt, TEMPLATES_DIR)
+
+        skill_df = (output_skill / "tasks-treatment" / "my-skill" / "environment" / "Dockerfile").read_text()
+        prompt_df = (output_prompt / "tasks-treatment" / "my-skill" / "environment" / "Dockerfile").read_text()
+        assert skill_df == prompt_df
+
+        skill_ctrl = (output_skill / "tasks-control" / "my-skill" / "environment" / "Dockerfile").read_text()
+        prompt_ctrl = (output_prompt / "tasks-control" / "my-skill" / "environment" / "Dockerfile").read_text()
+        assert skill_ctrl == prompt_ctrl
+
+    def test_missing_configured_dir_not_copied(
+        self, valid_submission: Path, tmp_path: Path,
+    ):
+        """Configured copy dirs that don't exist in submission must not be copied."""
+        meta_path = valid_submission / "metadata.yaml"
+        meta = yaml.safe_load(meta_path.read_text())
+        meta["experiment"] = {
+            "type": "custom",
+            "treatment": {
+                "copy": [
+                    {"src": "skills", "dest": "/skills"},
+                    {"src": "nonexistent", "dest": "/nonexistent"},
+                ],
+            },
+            "control": {},
+        }
+        meta_path.write_text(yaml.dump(meta))
+
+        output = tmp_path / "output"
+        treatment, _ = scaffold_submission(valid_submission, output, TEMPLATES_DIR)
+
+        assert (treatment / "environment" / "skills" / "SKILL.md").is_file()
+        assert not (treatment / "environment" / "nonexistent").exists()
+
+    def test_control_with_skills_treatment_without(
+        self, valid_submission: Path, tmp_path: Path,
+    ):
+        """Asymmetric config: control gets skills, treatment does not."""
+        meta_path = valid_submission / "metadata.yaml"
+        meta = yaml.safe_load(meta_path.read_text())
+        meta["experiment"] = {
+            "type": "custom",
+            "treatment": {},
+            "control": {"copy": [{"src": "skills", "dest": "/skills"}]},
+        }
+        meta_path.write_text(yaml.dump(meta))
+
+        output = tmp_path / "output"
+        treatment, control = scaffold_submission(valid_submission, output, TEMPLATES_DIR)
+
+        assert not (treatment / "environment" / "skills").exists()
+        assert "skills_dir" not in (treatment / "task.toml").read_text()
+
+        assert (control / "environment" / "skills" / "SKILL.md").is_file()
+        assert 'skills_dir = "/skills"' in (control / "task.toml").read_text()

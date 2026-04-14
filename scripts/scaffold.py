@@ -20,19 +20,14 @@ from pathlib import Path
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from abevalflow.experiment import get_strategy
-from abevalflow.schemas import ExperimentConfig, SubmissionMetadata
+from abevalflow.experiment import ExperimentStrategy, get_strategy
+from abevalflow.schemas import SubmissionMetadata
 
 logger = logging.getLogger(__name__)
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 
 COMMON_COPY_DIRS = ("tests", "supportive", "scripts")
-
-_VARIANT_TEMPLATE_MAP = {
-    "treatment": "skilled",
-    "control": "unskilled",
-}
 
 
 def _load_metadata(submission_dir: Path) -> SubmissionMetadata:
@@ -46,11 +41,9 @@ def _build_template_context(
     metadata: SubmissionMetadata,
     submission_dir: Path,
     variant: str,
-    experiment_config: ExperimentConfig,
+    strategy: ExperimentStrategy,
 ) -> dict:
     """Build the Jinja2 template context from metadata and directory inspection."""
-    strategy = get_strategy(experiment_config)
-
     tags = metadata.tags or []
     has_llm_judge = (submission_dir / "tests" / "llm_judge.py").is_file()
 
@@ -65,6 +58,9 @@ def _build_template_context(
         "has_scripts": (submission_dir / "scripts").is_dir(),
         "has_docs": (submission_dir / "docs").is_dir(),
         "has_llm_judge": has_llm_judge,
+        # These were formerly ad-hoc dict reads from raw metadata; they are
+        # not SubmissionMetadata fields (extra="forbid" rejects them), so the
+        # hardcoded defaults are the only values they ever had in practice.
         "llm_env_key": "LLM_API_KEY",
         "model_name": "",
         "agent_timeout": metadata.agent_timeout_sec,
@@ -76,11 +72,10 @@ def _build_template_context(
         "storage_mb": metadata.storage_mb,
     }
 
-    ctx = strategy.customize_context(base_context, variant)
+    ctx = strategy.customize_context(base_context, variant, submission_dir)
 
-    # Map variant to old template name. The task.toml.j2 template uses
-    # `{% if variant == "skilled" %}` to emit skills_dir — override to
-    # "unskilled" when the strategy determined there are no skills.
+    # Map to old template name until templates are unified (Dockerfile.j2).
+    # task.toml.j2 uses `{% if variant == "skilled" %}` to emit skills_dir.
     if ctx.get("skills_dir"):
         ctx["variant"] = "skilled"
     else:
@@ -105,17 +100,22 @@ def _render_templates(
 
 def _copy_submission_files(
     submission_dir: Path,
-    target_dir: Path,
+    build_context_dir: Path,
     strategy_copy_srcs: list[str],
 ) -> None:
-    """Copy instruction.md and relevant directories into the target task directory."""
-    shutil.copy2(submission_dir / "instruction.md", target_dir / "instruction.md")
+    """Copy instruction.md and relevant directories into the build context.
 
+    The build context (environment/) is the Docker build root. instruction.md
+    is copied here so the Dockerfile can COPY it into the image.
+    """
+    shutil.copy2(submission_dir / "instruction.md", build_context_dir / "instruction.md")
+
+    # Preserve insertion order, deduplicate (strategy dirs may overlap with common dirs)
     all_dirs = list(dict.fromkeys(strategy_copy_srcs + list(COMMON_COPY_DIRS)))
     for dirname in all_dirs:
         src = submission_dir / dirname
         if src.is_dir():
-            shutil.copytree(src, target_dir / dirname, dirs_exist_ok=True)
+            shutil.copytree(src, build_context_dir / dirname, dirs_exist_ok=True)
 
 
 def scaffold_submission(
@@ -134,8 +134,7 @@ def scaffold_submission(
     )
 
     metadata = _load_metadata(submission_dir)
-    experiment_config = metadata.experiment
-    strategy = get_strategy(experiment_config)
+    strategy = get_strategy(metadata.experiment)
 
     treatment_dir = output_dir / "tasks-treatment" / metadata.name
     control_dir = output_dir / "tasks-control" / metadata.name
@@ -145,7 +144,7 @@ def scaffold_submission(
         ("control", control_dir),
     ):
         context = _build_template_context(
-            metadata, submission_dir, variant, experiment_config,
+            metadata, submission_dir, variant, strategy,
         )
         rendered = _render_templates(jinja_env, context)
 
@@ -166,6 +165,9 @@ def scaffold_submission(
         copy_specs = strategy.variant_copy_specs(submission_dir, variant)
         strategy_srcs = [spec.src for spec in copy_specs]
         _copy_submission_files(submission_dir, environment_dir, strategy_srcs)
+
+        # Second copy at task root: Harbor reads instruction.md from the task
+        # directory (outside the build context) for display/metadata purposes.
         shutil.copy2(submission_dir / "instruction.md", target_dir / "instruction.md")
 
         logger.info("Scaffolded %s variant at %s", variant, target_dir)

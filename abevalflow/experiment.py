@@ -20,14 +20,21 @@ class ExperimentStrategy(Protocol):
     def variant_copy_specs(
         self, submission_dir: Path, variant: str,
     ) -> list[CopySpec]:
-        """Return copy specs for this variant ('control' or 'treatment')."""
+        """Return copy specs for this variant ('control' or 'treatment').
+
+        Only specs whose src directory exists in submission_dir are returned.
+        """
         ...
 
-    def customize_context(self, base_context: dict, variant: str) -> dict:
+    def customize_context(
+        self, base_context: dict, variant: str, submission_dir: Path,
+    ) -> dict:
         """Adjust template context per variant.
 
         Must set 'skills_dir' when skills/ is in the copy spec, and
         'copy_pairs' as a list of (src, dest) tuples for Dockerfile.j2.
+        copy_pairs are filtered to directories that actually exist in
+        submission_dir to avoid COPY instructions for missing dirs.
         """
         ...
 
@@ -38,6 +45,15 @@ def _skills_dir_from_specs(specs: list[CopySpec]) -> str | None:
         if spec.src == "skills":
             return spec.dest
     return None
+
+
+def _get_variant_spec(config: ExperimentConfig, variant: str):
+    return config.treatment if variant == "treatment" else config.control
+
+
+def _filter_specs(specs: list[CopySpec], submission_dir: Path) -> list[CopySpec]:
+    """Return only specs whose src directory exists in the submission."""
+    return [s for s in specs if (submission_dir / s.src).is_dir()]
 
 
 class SkillExperimentStrategy:
@@ -53,31 +69,49 @@ class SkillExperimentStrategy:
     def variant_copy_specs(
         self, submission_dir: Path, variant: str,
     ) -> list[CopySpec]:
-        if variant == "treatment":
-            return [
-                spec
-                for spec in self._config.treatment.copy_dirs
-                if (submission_dir / spec.src).is_dir()
-            ]
-        return [
-            spec
-            for spec in self._config.control.copy_dirs
-            if (submission_dir / spec.src).is_dir()
-        ]
+        specs = _get_variant_spec(self._config, variant).copy_dirs
+        return _filter_specs(specs, submission_dir)
 
-    def customize_context(self, base_context: dict, variant: str) -> dict:
-        specs = (
-            self._config.treatment.copy_dirs
-            if variant == "treatment"
-            else self._config.control.copy_dirs
-        )
+    def customize_context(
+        self, base_context: dict, variant: str, submission_dir: Path,
+    ) -> dict:
+        filtered = self.variant_copy_specs(submission_dir, variant)
         ctx = {**base_context}
-        ctx["skills_dir"] = _skills_dir_from_specs(specs)
-        ctx["copy_pairs"] = [(s.src, s.dest) for s in specs]
+        ctx["skills_dir"] = _skills_dir_from_specs(filtered)
+        ctx["copy_pairs"] = [(s.src, s.dest) for s in filtered]
         return ctx
 
 
-class ModelExperimentStrategy:
+class _PerVariantStrategy:
+    """Shared base for strategies that read copy/env from the per-variant spec.
+
+    Both ModelExperimentStrategy and ConfigDrivenStrategy have identical
+    mechanics — they differ only in semantic intent. This base eliminates
+    the duplication so changes need not be mirrored.
+    """
+
+    def __init__(self, config: ExperimentConfig) -> None:
+        self._config = config
+
+    def variant_copy_specs(
+        self, submission_dir: Path, variant: str,
+    ) -> list[CopySpec]:
+        specs = _get_variant_spec(self._config, variant).copy_dirs
+        return _filter_specs(specs, submission_dir)
+
+    def customize_context(
+        self, base_context: dict, variant: str, submission_dir: Path,
+    ) -> dict:
+        variant_spec = _get_variant_spec(self._config, variant)
+        filtered = _filter_specs(variant_spec.copy_dirs, submission_dir)
+        ctx = {**base_context}
+        ctx["skills_dir"] = _skills_dir_from_specs(filtered)
+        ctx["copy_pairs"] = [(s.src, s.dest) for s in filtered]
+        ctx["env_from_secrets"] = variant_spec.env_from_secrets
+        return ctx
+
+
+class ModelExperimentStrategy(_PerVariantStrategy):
     """Same files for both variants, different env vars.
 
     Both variants get identical copy specs from their respective
@@ -87,67 +121,19 @@ class ModelExperimentStrategy:
     into the Dockerfile.
     """
 
-    def __init__(self, config: ExperimentConfig) -> None:
-        self._config = config
 
-    def variant_copy_specs(
-        self, submission_dir: Path, variant: str,
-    ) -> list[CopySpec]:
-        variant_spec = (
-            self._config.treatment if variant == "treatment" else self._config.control
-        )
-        return [
-            spec
-            for spec in variant_spec.copy_dirs
-            if (submission_dir / spec.src).is_dir()
-        ]
-
-    def customize_context(self, base_context: dict, variant: str) -> dict:
-        variant_spec = (
-            self._config.treatment if variant == "treatment" else self._config.control
-        )
-        ctx = {**base_context}
-        ctx["skills_dir"] = _skills_dir_from_specs(variant_spec.copy_dirs)
-        ctx["copy_pairs"] = [(s.src, s.dest) for s in variant_spec.copy_dirs]
-        ctx["env_from_secrets"] = variant_spec.env_from_secrets
-        return ctx
-
-
-class ConfigDrivenStrategy:
+class ConfigDrivenStrategy(_PerVariantStrategy):
     """Reads copy/env directly from ExperimentConfig for 'custom' type.
 
     Sets skills_dir when 'skills' is in the copy spec src list.
     """
 
-    def __init__(self, config: ExperimentConfig) -> None:
-        self._config = config
-
-    def variant_copy_specs(
-        self, submission_dir: Path, variant: str,
-    ) -> list[CopySpec]:
-        variant_spec = (
-            self._config.treatment if variant == "treatment" else self._config.control
-        )
-        return [
-            spec
-            for spec in variant_spec.copy_dirs
-            if (submission_dir / spec.src).is_dir()
-        ]
-
-    def customize_context(self, base_context: dict, variant: str) -> dict:
-        variant_spec = (
-            self._config.treatment if variant == "treatment" else self._config.control
-        )
-        ctx = {**base_context}
-        ctx["skills_dir"] = _skills_dir_from_specs(variant_spec.copy_dirs)
-        ctx["copy_pairs"] = [(s.src, s.dest) for s in variant_spec.copy_dirs]
-        ctx["env_from_secrets"] = variant_spec.env_from_secrets
-        return ctx
-
 
 _STRATEGY_MAP: dict[ExperimentType, type] = {
     ExperimentType.SKILL: SkillExperimentStrategy,
     ExperimentType.MODEL: ModelExperimentStrategy,
+    # Prompt experiments differ at runtime (different system prompt), not in
+    # container layout — same copy/scaffold behavior as skill experiments.
     ExperimentType.PROMPT: SkillExperimentStrategy,
     ExperimentType.CUSTOM: ConfigDrivenStrategy,
 }

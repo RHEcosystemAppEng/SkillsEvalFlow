@@ -106,34 +106,45 @@ class TestSkillExperimentStrategy:
         assert "skills" in srcs
         assert "docs" not in srcs
 
-    def test_treatment_context_has_skills_dir(self) -> None:
+    def test_treatment_context_has_skills_dir(self, submission_dir: Path) -> None:
         config = ExperimentConfig()
         strategy = SkillExperimentStrategy(config)
-        ctx = strategy.customize_context({}, "treatment")
+        ctx = strategy.customize_context({}, "treatment", submission_dir)
         assert ctx["skills_dir"] == "/skills"
         assert ("skills", "/skills") in ctx["copy_pairs"]
 
-    def test_control_context_no_skills_dir(self) -> None:
+    def test_control_context_no_skills_dir(self, submission_dir: Path) -> None:
         config = ExperimentConfig()
         strategy = SkillExperimentStrategy(config)
-        ctx = strategy.customize_context({}, "control")
+        ctx = strategy.customize_context({}, "control", submission_dir)
         assert ctx["skills_dir"] is None
         assert ctx["copy_pairs"] == []
 
-    def test_treatment_context_preserves_base(self) -> None:
+    def test_treatment_context_preserves_base(self, submission_dir: Path) -> None:
         config = ExperimentConfig()
         strategy = SkillExperimentStrategy(config)
         base = {"skill_name": "test", "persona": "sre"}
-        ctx = strategy.customize_context(base, "treatment")
+        ctx = strategy.customize_context(base, "treatment", submission_dir)
         assert ctx["skill_name"] == "test"
         assert ctx["persona"] == "sre"
 
-    def test_base_context_not_mutated(self) -> None:
+    def test_base_context_not_mutated(self, submission_dir: Path) -> None:
         config = ExperimentConfig()
         strategy = SkillExperimentStrategy(config)
         base = {"key": "value"}
-        strategy.customize_context(base, "treatment")
+        strategy.customize_context(base, "treatment", submission_dir)
         assert "skills_dir" not in base
+
+    def test_treatment_context_filters_missing_docs(
+        self, submission_dir_no_docs: Path,
+    ) -> None:
+        """copy_pairs must not include dirs that don't exist in submission."""
+        config = ExperimentConfig()
+        strategy = SkillExperimentStrategy(config)
+        ctx = strategy.customize_context({}, "treatment", submission_dir_no_docs)
+        srcs = [src for src, _ in ctx["copy_pairs"]]
+        assert "skills" in srcs
+        assert "docs" not in srcs
 
 
 # ──────────────────────────────────────────────
@@ -164,19 +175,19 @@ class TestModelExperimentStrategy:
         specs = strategy.variant_copy_specs(submission_dir, "control")
         assert specs == []
 
-    def test_treatment_context_has_env_from_secrets(self) -> None:
+    def test_treatment_context_has_env_from_secrets(self, submission_dir: Path) -> None:
         strategy = ModelExperimentStrategy(self._model_config())
-        ctx = strategy.customize_context({}, "treatment")
+        ctx = strategy.customize_context({}, "treatment", submission_dir)
         assert ctx["env_from_secrets"]["MODEL_ENDPOINT"] == "models/endpoint-a"
 
-    def test_control_context_has_env_from_secrets(self) -> None:
+    def test_control_context_has_env_from_secrets(self, submission_dir: Path) -> None:
         strategy = ModelExperimentStrategy(self._model_config())
-        ctx = strategy.customize_context({}, "control")
+        ctx = strategy.customize_context({}, "control", submission_dir)
         assert ctx["env_from_secrets"]["MODEL_ENDPOINT"] == "models/endpoint-b"
 
-    def test_no_skills_dir_for_model_experiment(self) -> None:
+    def test_no_skills_dir_for_model_experiment(self, submission_dir: Path) -> None:
         strategy = ModelExperimentStrategy(self._model_config())
-        ctx = strategy.customize_context({}, "treatment")
+        ctx = strategy.customize_context({}, "treatment", submission_dir)
         assert ctx["skills_dir"] is None
 
     def test_model_with_copy_specs(self, submission_dir: Path) -> None:
@@ -194,8 +205,22 @@ class TestModelExperimentStrategy:
         strategy = ModelExperimentStrategy(config)
         specs = strategy.variant_copy_specs(submission_dir, "treatment")
         assert len(specs) == 1
-        ctx = strategy.customize_context({}, "treatment")
+        ctx = strategy.customize_context({}, "treatment", submission_dir)
         assert ctx["skills_dir"] == "/skills"
+
+    def test_model_filters_missing_dirs_in_context(self, submission_dir: Path) -> None:
+        """copy_pairs must not include dirs missing from submission."""
+        config = ExperimentConfig(
+            type="model",
+            treatment=VariantSpec(
+                copy=[CopySpec(src="nonexistent", dest="/nonexistent")],
+                env_from_secrets={"MODEL": "models/a"},
+            ),
+        )
+        strategy = ModelExperimentStrategy(config)
+        ctx = strategy.customize_context({}, "treatment", submission_dir)
+        assert ctx["copy_pairs"] == []
+        assert ctx["skills_dir"] is None
 
 
 # ──────────────────────────────────────────────
@@ -220,7 +245,7 @@ class TestConfigDrivenStrategy:
         control_specs = strategy.variant_copy_specs(submission_dir, "control")
         assert control_specs == []
 
-    def test_custom_skills_dir_set(self) -> None:
+    def test_custom_skills_dir_set(self, submission_dir: Path) -> None:
         config = ExperimentConfig(
             type="custom",
             treatment=VariantSpec(
@@ -228,10 +253,10 @@ class TestConfigDrivenStrategy:
             ),
         )
         strategy = ConfigDrivenStrategy(config)
-        ctx = strategy.customize_context({}, "treatment")
+        ctx = strategy.customize_context({}, "treatment", submission_dir)
         assert ctx["skills_dir"] == "/skills"
 
-    def test_custom_no_skills_dir_when_absent(self) -> None:
+    def test_custom_no_skills_dir_when_absent(self, submission_dir: Path) -> None:
         config = ExperimentConfig(
             type="custom",
             treatment=VariantSpec(
@@ -239,7 +264,7 @@ class TestConfigDrivenStrategy:
             ),
         )
         strategy = ConfigDrivenStrategy(config)
-        ctx = strategy.customize_context({}, "treatment")
+        ctx = strategy.customize_context({}, "treatment", submission_dir)
         assert ctx["skills_dir"] is None
 
     def test_custom_matches_skill_strategy_output(self, submission_dir: Path) -> None:
@@ -259,13 +284,13 @@ class TestConfigDrivenStrategy:
         skill_strategy = SkillExperimentStrategy(skill_config)
         custom_strategy = ConfigDrivenStrategy(custom_config)
 
-        skill_ctx = skill_strategy.customize_context({}, "treatment")
-        custom_ctx = custom_strategy.customize_context({}, "treatment")
+        skill_ctx = skill_strategy.customize_context({}, "treatment", submission_dir)
+        custom_ctx = custom_strategy.customize_context({}, "treatment", submission_dir)
 
         assert skill_ctx["skills_dir"] == custom_ctx["skills_dir"]
         assert skill_ctx["copy_pairs"] == custom_ctx["copy_pairs"]
 
-    def test_custom_env_from_secrets(self) -> None:
+    def test_custom_env_from_secrets(self, submission_dir: Path) -> None:
         config = ExperimentConfig(
             type="custom",
             treatment=VariantSpec(
@@ -273,7 +298,7 @@ class TestConfigDrivenStrategy:
             ),
         )
         strategy = ConfigDrivenStrategy(config)
-        ctx = strategy.customize_context({}, "treatment")
+        ctx = strategy.customize_context({}, "treatment", submission_dir)
         assert ctx["env_from_secrets"]["KEY"] == "secret/key"
 
     def test_custom_skips_missing_dirs(self, submission_dir: Path) -> None:
@@ -286,3 +311,20 @@ class TestConfigDrivenStrategy:
         strategy = ConfigDrivenStrategy(config)
         specs = strategy.variant_copy_specs(submission_dir, "treatment")
         assert specs == []
+
+    def test_custom_missing_dirs_not_in_context(self, submission_dir: Path) -> None:
+        """copy_pairs must not reference dirs absent from submission."""
+        config = ExperimentConfig(
+            type="custom",
+            treatment=VariantSpec(
+                copy=[
+                    CopySpec(src="skills", dest="/skills"),
+                    CopySpec(src="nonexistent", dest="/nonexistent"),
+                ],
+            ),
+        )
+        strategy = ConfigDrivenStrategy(config)
+        ctx = strategy.customize_context({}, "treatment", submission_dir)
+        srcs = [src for src, _ in ctx["copy_pairs"]]
+        assert "skills" in srcs
+        assert "nonexistent" not in srcs

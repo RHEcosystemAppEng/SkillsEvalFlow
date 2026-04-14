@@ -46,6 +46,18 @@ class CopySpec(BaseModel):
             raise ValueError("src must not be empty")
         return v
 
+    @field_validator("dest")
+    @classmethod
+    def _validate_dest(cls, v: str) -> str:
+        v = v.rstrip("/")
+        if not v:
+            raise ValueError("dest must not be empty")
+        if ".." in v:
+            raise ValueError("dest must not contain '..'")
+        if not v.startswith("/"):
+            raise ValueError("dest must be an absolute path (start with '/')")
+        return v
+
 
 class VariantSpec(BaseModel):
     """Describes what goes into a single variant (treatment or control)."""

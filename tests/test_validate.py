@@ -136,6 +136,26 @@ class TestCopySpec:
         with pytest.raises(ValidationError):
             CopySpec(src="/", dest="/skills")
 
+    def test_dest_trailing_slash_stripped(self) -> None:
+        cs = CopySpec(src="skills", dest="/skills/")
+        assert cs.dest == "/skills"
+
+    def test_dest_empty_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="empty"):
+            CopySpec(src="skills", dest="")
+
+    def test_dest_dotdot_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="\\.\\."):
+            CopySpec(src="skills", dest="/foo/../bar")
+
+    def test_dest_relative_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="absolute"):
+            CopySpec(src="skills", dest="skills")
+
+    def test_dest_slash_only_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="empty"):
+            CopySpec(src="skills", dest="/")
+
 
 # ──────────────────────────────────────────────
 # VariantSpec tests

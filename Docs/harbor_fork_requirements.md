@@ -1,65 +1,159 @@
-# Harbor Fork — Required Changes for ABEvalFlow Integration
+# Harbor Fork — Integration Requirements for ABEvalFlow
 
-> **Target repo:** [GuyZivRH/skills_eval_corrections](https://github.com/GuyZivRH/skills_eval_corrections)
+> **Target repo:** [RHEcosystemAppEng/skills_eval_corrections](https://github.com/RHEcosystemAppEng/skills_eval_corrections)
 > **Open PR:** [#1 — feat: add OpenShift environment backend](https://github.com/RHEcosystemAppEng/skills_eval_corrections/pull/1)
 > **ABEvalFlow branch:** `APPENG-4906/harbor-eval-task`
 
 ---
 
-## 1. Per-Task `environment_kwargs` Support (nice-to-have)
+## ABEvalFlow-Side Implementation (current state)
 
-### Context
+### How ABEvalFlow invokes Harbor
 
-ABEvalFlow currently runs each variant (treatment/control) as a **separate Harbor
-job**, each with its own config file and `jobs_dir`. This avoids the need for
-per-task environment kwargs — the global `environment.kwargs.image_ref` works
-because each job has a single task.
+The `harbor-eval` Tekton task (`pipeline/tasks/harbor-eval.yaml`) runs a single
+step that:
 
-However, if we later want to run both variants in a **single Harbor job** (e.g.,
-for sweep-based workflows or simplified config), per-task `environment_kwargs`
-would be needed.
+1. Installs Harbor from the fork via `pip install git+<fork-url>@<revision>`
+2. Generates **two separate Harbor job configs** (one per variant) using
+   `scripts/generate_eval_config.py`
+3. Runs `harbor run -c treatment-config.yaml` followed by
+   `harbor run -c control-config.yaml`
+4. Parses `result.json` files from each variant's results directory to compute
+   pass rates
 
-### Proposed Change
+### Per-variant config structure
 
-Add an optional `environment_kwargs` field to `TaskConfig` in
-`src/harbor/models/trial/config.py`:
-
-```python
-class TaskConfig(BaseModel):
-    path: Path
-    git_url: str | None = None
-    git_commit_id: str | None = None
-    overwrite: bool = False
-    download_dir: Path | None = None
-    source: str | None = None
-    environment_kwargs: dict[str, Any] = Field(default_factory=dict)  # <-- new
-```
-
-### Merge Logic
-
-When the `Job` creates `TrialConfig` instances from `JobConfig`, merge
-per-task kwargs into the trial's environment config:
-
-```python
-# In the trial creation loop (conceptual):
-trial_env_config = job_config.environment.model_copy(deep=True)
-trial_env_config.kwargs = {**trial_env_config.kwargs, **task.environment_kwargs}
-```
-
-Task-level kwargs override global kwargs for the same key (task wins).
-
-### Example
+Each config is a standard Harbor `JobConfig` YAML with a **single task** and
+the image ref set via global `environment.kwargs.image_ref`:
 
 ```yaml
-job_name: my-submission-eval
-jobs_dir: eval-results
+# treatment-config.yaml
+job_name: my-submission-treatment
+jobs_dir: /workspace/eval-results/my-submission/treatment
 n_attempts: 20
 environment:
   type: openshift
   delete: true
+  kwargs:
+    image_ref: "registry/ns/my-submission@sha256:abc..."
+  override_cpus: 1
+  override_memory_mb: 2048
+  override_storage_mb: 10240
 agents:
-  - name: claude-code
-    model_name: claude-sonnet-4-5
+  - {}
+tasks:
+  - path: /workspace/tasks-treatment/my-submission
+```
+
+Control config is identical but with the control image ref and task path.
+
+### Result directory layout
+
+```
+eval-results/<submission-name>/
+    treatment/
+        <job-name>/
+            <task-name>__<uuid>/result.json
+            <task-name>__<uuid>/result.json
+            ...  (N trials)
+    control/
+        <job-name>/
+            <task-name>__<uuid>/result.json
+            ...  (N trials)
+```
+
+### What ABEvalFlow reads from metadata.yaml
+
+The config generator extracts these fields from `SubmissionMetadata`:
+
+| Field | Maps to | Default |
+|-------|---------|---------|
+| `experiment.n_trials` | `n_attempts` | 20 |
+| `agent_timeout_sec` | `agent_timeout_multiplier` (ratio vs 600s) | 1.0x |
+| `verifier_timeout_sec` | `verifier_timeout_multiplier` (ratio vs 120s) | 1.0x |
+| `agent_setup_timeout_sec` | `agent_setup_timeout_multiplier` (ratio vs 600s) | 1.0x |
+| `build_timeout_sec` | `environment_build_timeout_multiplier` (ratio vs 600s) | 1.0x |
+| `cpus` | `environment.override_cpus` | 1 |
+| `memory_mb` | `environment.override_memory_mb` | 2048 |
+| `storage_mb` | `environment.override_storage_mb` | 10240 |
+
+### Eval modes
+
+| Mode | `--ek image_ref` | Image source | When to use |
+|------|------------------|--------------|-------------|
+| `prebuilt` | Set to digest ref from build-push task | Tekton builds with Buildah, pushes to internal registry | Default pipeline flow |
+| `local-build` | Not set; `force_build: true` | Harbor builds from `environment/Dockerfile` in each task dir | Local dev, or when skipping the build-push step |
+
+### Tekton results emitted
+
+| Result | Description |
+|--------|-------------|
+| `treatment-pass-rate` | Decimal string (e.g. `"0.8500"`) |
+| `control-pass-rate` | Decimal string (e.g. `"0.6000"`) |
+| `results-dir` | Absolute path to the results base directory |
+
+---
+
+## What the Harbor fork must support
+
+### Required (blocking)
+
+**1. `harbor run -c <config.yaml>` with OpenShift environment**
+
+The fork's `OpenShiftEnvironment` must handle the full trial lifecycle when
+invoked with `--env openshift` (or `environment.type: openshift` in config):
+
+- Accept `image_ref` via `environment.kwargs` — verify the image is pullable,
+  skip building
+- Create trial Pods with the pre-built image
+- Execute agent + verifier inside the Pod via `exec`
+- Upload/download files via tar-over-exec
+- Write `result.json` with `verifier_result.reward` (float: 1.0 = pass, 0.0 = fail)
+- Clean up Pods after each trial (`delete: true`)
+
+**Status:** Implemented in PR #1. Needs merge.
+
+**2. `environment.kwargs` passthrough in config-based invocation**
+
+When `harbor run -c config.yaml` is used, the `environment.kwargs` dict from
+the config must be passed to the environment's `__init__`. This is how
+`image_ref` reaches `OpenShiftEnvironment`.
+
+**Status:** Verify this works in `harbor jobs start` with YAML config
+(vs CLI `--ek` flags). The CLI path (`--ek image_ref=...`) is tested;
+the config path should behave identically but needs confirmation.
+
+**3. `result.json` output format**
+
+ABEvalFlow's pass-rate parser expects:
+
+```json
+{
+  "verifier_result": {
+    "reward": 1.0
+  }
+}
+```
+
+Where `reward > 0.0` means pass. This is Harbor's standard format — no change
+needed, but any deviation would break the parser.
+
+### Nice-to-have (not blocking)
+
+**4. Per-task `environment_kwargs` support**
+
+ABEvalFlow currently runs each variant as a separate Harbor job to work around
+the global `environment.kwargs`. If we later want to run both variants in a
+single job (e.g., for sweep-based workflows), per-task `environment_kwargs`
+would be needed.
+
+Proposed change: add `environment_kwargs: dict[str, Any]` to `TaskConfig` in
+`src/harbor/models/trial/config.py`. When `Job` creates `TrialConfig` instances,
+merge per-task kwargs into the trial's `EnvironmentConfig.kwargs` (task-level
+overrides global).
+
+```yaml
+# Single-job example (requires this fork change):
 tasks:
   - path: /workspace/tasks-treatment/my-submission
     environment_kwargs:
@@ -69,17 +163,9 @@ tasks:
       image_ref: "registry/ns/my-submission@sha256:def..."
 ```
 
-### Testing
-
-- Unit test: verify that `TrialConfig` created from a `TaskConfig` with
-  `environment_kwargs` has them merged into `environment.kwargs`.
-- Unit test: verify task-level kwargs override global kwargs.
-- Unit test: verify `TaskConfig` without `environment_kwargs` behaves identically
-  to current behavior (backwards compatible).
-
 ---
 
-## 2. Handoff Doc Alignment (WS3A)
+## Handoff Doc Alignment (WS3A)
 
 The existing handoff doc (`Docs/harbor_openshift_backend.md`) has diverged from
 the actual implementation in PR #1. These items should be updated:

@@ -26,7 +26,7 @@ The `tasks-treatment/` and `tasks-control/` directories generated during scaffol
 
 ### Harbor Fork
 
-The Harbor fork is at [GuyZivRH/skills_eval_corrections](https://github.com/GuyZivRH/skills_eval_corrections), forked from `harbor-framework/harbor`. The OpenShift backend will be added here as a new environment type alongside the existing GKE, Docker, Podman, Daytona, Modal, etc.
+The Harbor fork is at [RHEcosystemAppEng/skills_eval_corrections](https://github.com/RHEcosystemAppEng/skills_eval_corrections), forked from `harbor-framework/harbor`. The OpenShift backend will be added here as a new environment type alongside the existing GKE, Docker, Podman, Daytona, Modal, etc.
 
 ### LLM Access Strategy (Updated from ADR)
 
@@ -104,7 +104,7 @@ ABEvalFlow/
 | EventListener route/URL | Webhook target | Exposed via OpenShift Route; URL needed for GitHub webhook setup |
 | Submissions repo deploy key (read) | Clone submission on pipeline trigger | Stored as OpenShift Secret |
 | Quay.io registry | Image storage | Service account + push secret |
-| Harbor fork | Evaluation engine | [GuyZivRH/skills_eval_corrections](https://github.com/GuyZivRH/skills_eval_corrections) with OpenShift backend |
+| Harbor fork | Evaluation engine | [RHEcosystemAppEng/skills_eval_corrections](https://github.com/RHEcosystemAppEng/skills_eval_corrections) with OpenShift backend |
 | LLM access | Agent inference | One of: direct API key, opencode+self-hosted, or Vertex AI+LiteLLM |
 | PVC or MinIO (S3) | Artifact storage | For reports, logs, images |
 | agentic-collections deploy key (write) | Publish passing skills | Token/deploy key stored as OpenShift Secret |
@@ -269,7 +269,7 @@ Use digest-based references (not mutable tags) between tasks to avoid tag mutati
 
 ### 4.1 OpenShift Environment Backend (in Harbor fork)
 
-**Goal:** Create a new `OpenShiftEnvironment` class extending `BaseEnvironment` (from `src/harbor/environments/base.py`) in the [Harbor fork](https://github.com/GuyZivRH/skills_eval_corrections).
+**Goal:** Create a new `OpenShiftEnvironment` class extending `BaseEnvironment` (from `src/harbor/environments/base.py`) in the [Harbor fork](https://github.com/RHEcosystemAppEng/skills_eval_corrections).
 
 The GKE backend (`src/harbor/environments/gke.py`, ~1044 lines) serves as the reference implementation. The OpenShift backend must implement the full `BaseEnvironment` interface:
 

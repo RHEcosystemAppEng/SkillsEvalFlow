@@ -152,10 +152,11 @@ def generate_eval_configs(
     metadata = load_metadata(submission_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    variant_args = {
-        "treatment": (treatment_task_dir, treatment_image_ref),
-        "control": (control_task_dir, control_image_ref),
-    }
+    variant_args = dict(zip(
+        VARIANTS,
+        ((treatment_task_dir, treatment_image_ref),
+         (control_task_dir, control_image_ref)),
+    ))
 
     configs: dict[str, dict[str, Any]] = {}
     for variant, (task_dir, img_ref) in variant_args.items():

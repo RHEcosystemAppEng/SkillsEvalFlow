@@ -122,9 +122,9 @@ One row per trial. Enables drill-down queries.
 
 ## 2. DB Engine — `abevalflow/db/engine.py`
 
-- `get_engine(url: str) -> Engine` — creates SQLAlchemy engine from URL
-- `init_db(engine: Engine)` — `Base.metadata.create_all(engine)`
-- `Session` — `sessionmaker` bound to engine
+- `get_engine(url: str | None = None) -> Engine` — creates SQLAlchemy engine from URL
+- `init_db(engine: Engine)` — `Base.metadata.create_all(engine)`, retries up to 5 times with exponential backoff on `OperationalError` (via `tenacity`) for cold-start resilience; non-transient errors (auth, SSL) fail immediately
+- `make_session(engine: Engine) -> sessionmaker[Session]` — returns a session factory bound to the given engine
 - Connection URL from `DATABASE_URL` env var
 - Format: `postgresql+psycopg://user:pass@host:5432/abevalflow`
 - Falls back to SQLite for local dev / testing
@@ -222,7 +222,7 @@ Output: formatted table to stdout (simple column alignment, no heavy dependency)
 - DB credentials from Kubernetes Secret (`ab-eval-db-credentials`) mounted as env vars
 - Sets `export PYTHONPATH="$PIPELINE_DIR"` before running scripts (same as `analyze-report`)
 - Uses the same `git clone / fetch / checkout` pattern as `analyze-report` to avoid stale code
-- Installs `sqlalchemy psycopg[binary] pydantic`
+- Installs `sqlalchemy psycopg[binary] pydantic tenacity`
 - Runs `scripts/store_results.py --report-dir ... --run-id $(params.pipeline-run-id)`
 - `pipeline-run-id` is required in the Tekton task (always available from `$(context.pipelineRun.name)`)
 
@@ -232,10 +232,9 @@ Output: formatted table to stdout (simple column alignment, no heavy dependency)
 
 | File | Content |
 |---|---|
-| `config/postgres/statefulset.yaml` | PostgreSQL 16 StatefulSet (single replica MVP) |
+| `config/postgres/statefulset.yaml` | PostgreSQL 16 StatefulSet (single replica MVP) with inline `volumeClaimTemplates` (10Gi) |
 | `config/postgres/service.yaml` | ClusterIP Service (`ab-eval-db:5432`) |
 | `config/postgres/secret.yaml` | Secret template (placeholder values — never real credentials) |
-| `config/postgres/pvc.yaml` | PersistentVolumeClaim for data (10Gi default) |
 
 Update `config/rbac.yaml`: grant pipeline SA read access to `ab-eval-db-credentials` Secret.
 
@@ -263,9 +262,9 @@ Add to `pyproject.toml`:
 | `tests/test_store_results.py` | Store, idempotency, observer invocation, error handling |
 | `tests/test_query_results.py` | All subcommands against seeded data |
 
-All unit tests use **SQLite in-memory** — no PostgreSQL required for CI.
-An optional PostgreSQL integration test (`@pytest.mark.skipif` unless
-`DATABASE_URL` is set) validates dialect-specific behavior (JSONB, UUID).
+All unit tests use **SQLite in-memory / file-based** — no PostgreSQL required for CI.
+An optional PostgreSQL integration test (deferred — add `@pytest.mark.skipif`
+when PostgreSQL is deployed) would validate dialect-specific behavior (JSONB, UUID).
 
 ---
 
@@ -274,7 +273,7 @@ An optional PostgreSQL integration test (`@pytest.mark.skipif` unless
 `abevalflow/report.py` (defines `AnalysisResult`) lives on `APPENG-4907/analysis-reporting` (not yet merged to main). Strategy:
 
 - **Prefer taking from `main`** once APPENG-4907 merges
-- **Cherry-pick** only if this branch needs to land before APPENG-4907 (commits `3ce9ac3` + `990e64d`)
+- **Cherry-picked** onto this branch as commit `9567429` (from `APPENG-4907/analysis-reporting`)
 - Both branches produce the identical file — git auto-merges cleanly when both land on main
 - The store script imports `AnalysisResult` directly for type-safe validation at ingest time
 
@@ -301,10 +300,9 @@ An optional PostgreSQL integration test (`@pytest.mark.skipif` unless
 
 4. **`feat: add store-results Tekton task and PostgreSQL manifests`**
    - `pipeline/tasks/store-results.yaml`
-   - `config/postgres/statefulset.yaml`
+   - `config/postgres/statefulset.yaml` (includes `volumeClaimTemplates` for PVC)
    - `config/postgres/service.yaml`
    - `config/postgres/secret.yaml`
-   - `config/postgres/pvc.yaml`
    - `config/rbac.yaml` (update)
 
 ---

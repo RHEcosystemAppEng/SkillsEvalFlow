@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class Recommendation(StrEnum):
@@ -26,10 +26,11 @@ class TrialResult(BaseModel):
         default=None,
         description="Continuous reward score (0.0-1.0). None if the trial produced no parseable result.",
     )
-    passed: bool = Field(
-        default=False,
-        description="True when reward is not None and > 0.0",
-    )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def passed(self) -> bool:
+        return self.reward is not None and self.reward > 0.0
 
 
 class VariantSummary(BaseModel):

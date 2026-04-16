@@ -87,11 +87,7 @@ def parse_variant_trials(variant_dir: Path) -> list[TrialResult]:
         try:
             data = json.loads(result_file.read_text())
             reward = _extract_reward(data)
-            trials.append(TrialResult(
-                trial_name=trial_name,
-                reward=reward,
-                passed=reward is not None and reward > 0.0,
-            ))
+            trials.append(TrialResult(trial_name=trial_name, reward=reward))
         except (json.JSONDecodeError, ValueError, TypeError):
             trials.append(TrialResult(trial_name=trial_name))
 
@@ -142,12 +138,16 @@ def compute_ttest(treatment_trials: list[TrialResult],
 
 def compute_fisher(treatment_summary: VariantSummary,
                    control_summary: VariantSummary) -> float | None:
-    """Fisher's exact test on the 2x2 pass/fail contingency table."""
+    """Fisher's exact test on the 2x2 pass/fail contingency table.
+
+    Error trials (missing/corrupt results) are excluded from the table so
+    infrastructure failures don't skew significance.
+    """
     t_pass = treatment_summary.n_passed
-    t_fail = treatment_summary.n_trials - treatment_summary.n_passed
+    t_fail = treatment_summary.n_failed
     c_pass = control_summary.n_passed
-    c_fail = control_summary.n_trials - control_summary.n_passed
-    if treatment_summary.n_trials == 0 or control_summary.n_trials == 0:
+    c_fail = control_summary.n_failed
+    if (t_pass + t_fail) == 0 or (c_pass + c_fail) == 0:
         return None
     table = [[t_pass, t_fail], [c_pass, c_fail]]
     _, p = sp_stats.fisher_exact(table)
@@ -179,7 +179,11 @@ def build_analysis(
     ttest_p = compute_ttest(treatment_trials, control_trials)
     fisher_p = compute_fisher(t_summary, c_summary)
 
-    recommendation = Recommendation.PASS if uplift >= threshold else Recommendation.FAIL
+    if t_summary.n_trials == 0 or c_summary.n_trials == 0:
+        logger.warning("No trial data for one or both variants — defaulting to FAIL")
+        recommendation = Recommendation.FAIL
+    else:
+        recommendation = Recommendation.PASS if uplift >= threshold else Recommendation.FAIL
 
     return AnalysisResult(
         submission_name=submission_name,

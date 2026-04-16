@@ -61,12 +61,12 @@ def results_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture()
 def all_pass_dir(tmp_path: Path) -> Path:
-    """All trials pass with reward=1.0."""
+    """All trials pass with high reward (slight variance to avoid scipy warnings)."""
     base = tmp_path / "all-pass"
     for variant in ("treatment", "control"):
         job = base / variant / f"sub-{variant}"
         for i in range(5):
-            _write_result(job / f"t__{i:03d}", 1.0)
+            _write_result(job / f"t__{i:03d}", 0.95 + 0.01 * i)
     return base
 
 
@@ -189,7 +189,7 @@ class TestComputeVariantSummary:
         assert summary.std_reward is None
 
     def test_single_trial(self):
-        trials = [TrialResult(trial_name="t1", reward=0.5, passed=True)]
+        trials = [TrialResult(trial_name="t1", reward=0.5)]
         summary = compute_variant_summary(trials)
         assert summary.n_trials == 1
         assert summary.mean_reward == 0.5
@@ -197,7 +197,7 @@ class TestComputeVariantSummary:
 
     def test_error_trials_counted(self):
         trials = [
-            TrialResult(trial_name="t1", reward=1.0, passed=True),
+            TrialResult(trial_name="t1", reward=1.0),
             TrialResult(trial_name="t2"),
         ]
         summary = compute_variant_summary(trials)
@@ -226,48 +226,55 @@ class TestStatisticalTests:
         assert p < 0.05
 
     def test_ttest_no_difference(self):
-        t = [TrialResult(trial_name=f"t{i}", reward=0.7, passed=True) for i in range(10)]
-        c = [TrialResult(trial_name=f"c{i}", reward=0.65 + 0.01 * i, passed=True) for i in range(10)]
+        t = [TrialResult(trial_name=f"t{i}", reward=0.68 + 0.02 * (i % 3)) for i in range(10)]
+        c = [TrialResult(trial_name=f"c{i}", reward=0.65 + 0.01 * i) for i in range(10)]
         p = compute_ttest(t, c)
         assert p is not None
         assert p > 0.05
 
     def test_ttest_insufficient_data(self):
-        t = [TrialResult(trial_name="t1", reward=1.0, passed=True)]
+        t = [TrialResult(trial_name="t1", reward=1.0)]
         c = [TrialResult(trial_name="c1", reward=0.0)]
         assert compute_ttest(t, c) is None
 
     def test_ttest_error_trials_excluded(self):
         t = [
-            TrialResult(trial_name="t1", reward=1.0, passed=True),
-            TrialResult(trial_name="t2", reward=0.9, passed=True),
+            TrialResult(trial_name="t1", reward=1.0),
+            TrialResult(trial_name="t2", reward=0.9),
             TrialResult(trial_name="t3"),
         ]
         c = [
-            TrialResult(trial_name="c1", reward=0.1, passed=True),
+            TrialResult(trial_name="c1", reward=0.1),
             TrialResult(trial_name="c2", reward=0.0),
         ]
         p = compute_ttest(t, c)
         assert p is not None
 
     def test_fisher_significant(self):
-        t = VariantSummary(n_trials=20, n_passed=18, pass_rate=0.9)
-        c = VariantSummary(n_trials=20, n_passed=5, pass_rate=0.25)
+        t = VariantSummary(n_trials=20, n_passed=18, n_failed=2, pass_rate=0.9)
+        c = VariantSummary(n_trials=20, n_passed=5, n_failed=15, pass_rate=0.25)
         p = compute_fisher(t, c)
         assert p is not None
         assert p < 0.001
 
     def test_fisher_no_difference(self):
-        t = VariantSummary(n_trials=20, n_passed=10, pass_rate=0.5)
-        c = VariantSummary(n_trials=20, n_passed=10, pass_rate=0.5)
+        t = VariantSummary(n_trials=20, n_passed=10, n_failed=10, pass_rate=0.5)
+        c = VariantSummary(n_trials=20, n_passed=10, n_failed=10, pass_rate=0.5)
         p = compute_fisher(t, c)
         assert p is not None
         assert p > 0.05
 
     def test_fisher_empty_variant(self):
         t = VariantSummary(n_trials=0)
-        c = VariantSummary(n_trials=20, n_passed=10)
+        c = VariantSummary(n_trials=20, n_passed=10, n_failed=10)
         assert compute_fisher(t, c) is None
+
+    def test_fisher_excludes_error_trials(self):
+        t = VariantSummary(n_trials=20, n_passed=10, n_failed=5, n_errors=5)
+        c = VariantSummary(n_trials=20, n_passed=10, n_failed=5, n_errors=5)
+        p = compute_fisher(t, c)
+        assert p is not None
+        assert p > 0.05
 
 
 # ---------------------------------------------------------------------------
@@ -297,7 +304,7 @@ class TestBuildAnalysis:
         assert result.summary.treatment.n_trials == 0
         assert result.summary.control.n_trials == 0
         assert result.summary.uplift == 0.0
-        assert result.summary.recommendation == Recommendation.PASS
+        assert result.summary.recommendation == Recommendation.FAIL
 
     def test_provenance_passthrough(self, results_dir: Path):
         prov = Provenance(commit_sha="abc123", pipeline_run_id="run-42")

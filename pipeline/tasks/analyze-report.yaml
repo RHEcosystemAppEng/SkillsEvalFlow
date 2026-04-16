@@ -52,6 +52,8 @@ spec:
     - name: pipeline-repo-revision
       type: string
       default: "main"
+      # TODO: pin to a specific SHA once the pipeline stabilises — "main"
+      # means each TaskRun pulls whatever is current, risking breakage.
       description: Branch or SHA of the pipeline repo to use for scripts
   workspaces:
     - name: source
@@ -72,16 +74,19 @@ spec:
         #!/usr/bin/env bash
         set -euo pipefail
 
-        # --- 1. Clone pipeline repo (or reuse) ---
+        # --- 1. Clone pipeline repo (or update to requested revision) ---
         PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
         if [ -d "$PIPELINE_DIR" ]; then
-          echo "Pipeline repo already cloned, skipping"
+          echo "Pipeline repo exists, updating to requested revision"
+          git -C "$PIPELINE_DIR" fetch origin "$(params.pipeline-repo-revision)" --depth 1
+          git -C "$PIPELINE_DIR" checkout FETCH_HEAD
         else
           git clone --depth 1 --branch "$(params.pipeline-repo-revision)" \
             "$(params.pipeline-repo-url)" "$PIPELINE_DIR"
         fi
 
         cd "$PIPELINE_DIR"
+        export PYTHONPATH="$PIPELINE_DIR"
         pip install --quiet --no-cache-dir pydantic scipy
 
         # --- 2. Run analysis ---
@@ -120,11 +125,15 @@ spec:
           "$(results.treatment-pass-rate.path)" \
           "$(results.control-pass-rate.path)" <<'EXTRACT'
         import json, sys
-        report = json.loads(open(sys.argv[1]).read())
-        s = report["summary"]
-        open(sys.argv[2], "w").write(s["recommendation"])
-        open(sys.argv[3], "w").write(f"{s['treatment']['pass_rate']:.4f}")
-        open(sys.argv[4], "w").write(f"{s['control']['pass_rate']:.4f}")
+        try:
+            report = json.loads(open(sys.argv[1]).read())
+            s = report["summary"]
+            open(sys.argv[2], "w").write(s["recommendation"])
+            open(sys.argv[3], "w").write(f"{s['treatment']['pass_rate']:.4f}")
+            open(sys.argv[4], "w").write(f"{s['control']['pass_rate']:.4f}")
+        except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
+            print(f"ERROR: Failed to extract Tekton results from report: {e}", file=sys.stderr)
+            sys.exit(1)
         EXTRACT
 
         echo "=== Analysis complete ==="

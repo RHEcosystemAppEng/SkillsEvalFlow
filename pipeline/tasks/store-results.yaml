@@ -66,7 +66,7 @@ spec:
         export PYTHONPATH="$PIPELINE_DIR"
 
         # --- 2. Install dependencies ---
-        pip install --quiet --no-cache-dir pydantic sqlalchemy "psycopg[binary]"
+        pip install --quiet --no-cache-dir pydantic sqlalchemy "psycopg[binary]" "tenacity>=8.2"
 
         # --- 3. Run store script ---
         echo "Storing results for submission=$(params.submission-name) run=$(params.pipeline-run-id)"

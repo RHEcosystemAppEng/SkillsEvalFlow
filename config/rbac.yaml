@@ -11,3 +11,28 @@ subjects:
   - kind: ServiceAccount
     name: pipeline
     namespace: ab-eval-flow
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pipeline-db-secret-reader
+  namespace: ab-eval-flow
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["ab-eval-db-credentials"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pipeline-db-secret-reader
+  namespace: ab-eval-flow
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pipeline-db-secret-reader
+subjects:
+  - kind: ServiceAccount
+    name: pipeline
+    namespace: ab-eval-flow

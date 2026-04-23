@@ -65,5 +65,9 @@ metadata:
   namespace: ab-eval-flow
   labels:
     app.kubernetes.io/part-of: abevalflow
-data: {}
-  # Populate from scripts/cleanup.sh — see comment above.
+data:
+  cleanup.sh: |
+    #!/usr/bin/env bash
+    echo "ERROR: placeholder — regenerate this ConfigMap from scripts/cleanup.sh:"
+    echo "  oc create configmap cleanup-script --from-file=cleanup.sh=scripts/cleanup.sh -n ab-eval-flow --dry-run=client -o yaml | oc apply -f -"
+    exit 1

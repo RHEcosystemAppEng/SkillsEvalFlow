@@ -9,7 +9,7 @@ metadata:
     abevalflow/llm-mode: direct-api
     abevalflow/note: >-
       Allows trial pods to reach LLM provider APIs and DNS.
-      Apply this policy INSTEAD OF default-deny when using direct API keys.
+      Apply IN ADDITION TO default-deny when using direct API keys.
 spec:
   podSelector:
     matchLabels:

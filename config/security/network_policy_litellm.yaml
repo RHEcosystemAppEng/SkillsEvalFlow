@@ -9,7 +9,7 @@ metadata:
     abevalflow/llm-mode: vertex+litellm
     abevalflow/note: >-
       Allows trial pods to reach only the in-cluster LiteLLM proxy
-      and DNS. No external egress. Apply INSTEAD OF default-deny
+      and DNS. No external egress. Apply IN ADDITION TO default-deny
       when using Vertex AI mode.
 spec:
   podSelector:

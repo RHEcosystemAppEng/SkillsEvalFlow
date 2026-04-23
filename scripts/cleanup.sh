@@ -6,8 +6,7 @@ set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-ab-eval-flow}"
 POD_AGE_HOURS="${POD_AGE_HOURS:-24}"
-PIPELINERUN_AGE_DAYS="${PIPELINERUN_AGE_DAYS:-7}"
-DEAD_LETTER_RETENTION_DAYS="${DEAD_LETTER_RETENTION_DAYS:-14}"
+PIPELINERUN_KEEP_COUNT="${PIPELINERUN_KEEP_COUNT:-7}"
 
 log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
 
@@ -37,11 +36,11 @@ print(int((datetime.now(timezone.utc) - start).total_seconds()))
   fi
 done
 
-# Delete old PipelineRuns
-log "Removing PipelineRuns older than ${PIPELINERUN_AGE_DAYS}d..."
+# Delete old PipelineRuns (keep the N most recent by count)
+log "Pruning PipelineRuns, keeping most recent ${PIPELINERUN_KEEP_COUNT}..."
 if command -v tkn &>/dev/null; then
   tkn pipelinerun delete -n "${NAMESPACE}" \
-    --keep="${PIPELINERUN_AGE_DAYS}" \
+    --keep="${PIPELINERUN_KEEP_COUNT}" \
     --force 2>/dev/null || true
 fi
 

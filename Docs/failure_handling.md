@@ -1,12 +1,13 @@
 # Failure Handling, Retries, and Idempotency
 
-## Retry Policy
+## Retry Policy (Target — Not Yet Applied)
 
-Each pipeline task has a retry configuration based on its idempotency
-characteristics. Retries are defined in `pipeline.yaml` using Tekton's
-`retries` field.
+> **Note:** The per-task retry values below are the target policy. They
+> will be added to `pipeline.yaml` once the pipeline assembly PR merges
+> and per-task `retries` fields are wired. Currently `pipeline.yaml`
+> only sets aggregate `spec.timeouts`.
 
-| Task | Retries | Rationale |
+| Task | Planned Retries | Rationale |
 |---|---|---|
 | `clone-repo` (ClusterTask) | 2 | Network-dependent, fully idempotent |
 | `validate` | 1 | Read-only, deterministic |
@@ -16,12 +17,13 @@ characteristics. Retries are defined in `pipeline.yaml` using Tekton's
 | `analyze` | 1 | Reads from workspace, deterministic computation |
 | `store-results` | 2 | Database transient errors; upsert logic ensures idempotency via `pipeline_run_id` uniqueness |
 
-## Timeouts
+## Timeouts (Target — Not Yet Applied)
 
-Per-task timeouts prevent hung tasks from consuming cluster resources
-indefinitely. Set in `pipeline.yaml` using Tekton's `timeout` field.
+> **Note:** The per-task timeouts below are the target policy. They will
+> be added to `pipeline.yaml` alongside the retry values. Currently only
+> aggregate timeouts are set: `pipeline: 4h`, `tasks: 3h`.
 
-| Task | Timeout | Notes |
+| Task | Planned Timeout | Notes |
 |---|---|---|
 | `clone-repo` | 5m | Large repos may need adjustment |
 | `validate` | 10m | Includes py_compile on all test files |
@@ -60,12 +62,13 @@ Tekton that a retry would not help.
 When a PipelineRun fails after exhausting retries:
 
 1. **Artifacts are retained** on the workspace PVC (not cleaned up)
-2. Failed run artifacts are copied to the `abevalflow-dead-letter` PVC
-   by the cleanup CronJob (instead of being deleted)
-3. Dead-letter artifacts are retained for 14 days (configurable via
-   `DEAD_LETTER_RETENTION_DAYS`)
-4. PipelineRun metadata remains queryable via `tkn pipelinerun describe`
-   until the cleanup CronJob prunes it (default 7 days)
+2. The `abevalflow-dead-letter` PVC is provisioned and reserved for
+   failed-run artifact storage. Automatic copy logic is **not yet
+   implemented** — operators can manually copy artifacts from the
+   workspace PVC for post-mortem analysis.
+3. PipelineRun metadata remains queryable via `tkn pipelinerun describe`
+   until the cleanup CronJob prunes it (keeps the 7 most recent by
+   count, configurable via `PIPELINERUN_KEEP_COUNT`)
 
 ## Partial-Run Recovery
 

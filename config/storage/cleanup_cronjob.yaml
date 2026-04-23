@@ -26,7 +26,7 @@ spec:
                   value: ab-eval-flow
                 - name: POD_AGE_HOURS
                   value: "24"
-                - name: PIPELINERUN_AGE_DAYS
+                - name: PIPELINERUN_KEEP_COUNT
                   value: "7"
               volumeMounts:
                 - name: scripts
@@ -50,6 +50,14 @@ spec:
                 name: cleanup-script
                 defaultMode: 0755
 ---
+# The cleanup-script ConfigMap should be created from scripts/cleanup.sh
+# to maintain a single source of truth:
+#
+#   oc create configmap cleanup-script \
+#     --from-file=cleanup.sh=scripts/cleanup.sh \
+#     -n ab-eval-flow --dry-run=client -o yaml | oc apply -f -
+#
+# Alternatively, apply it manually:
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -57,55 +65,5 @@ metadata:
   namespace: ab-eval-flow
   labels:
     app.kubernetes.io/part-of: abevalflow
-data:
-  cleanup.sh: |
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    NAMESPACE="${NAMESPACE:-ab-eval-flow}"
-    POD_AGE_HOURS="${POD_AGE_HOURS:-24}"
-    PIPELINERUN_AGE_DAYS="${PIPELINERUN_AGE_DAYS:-7}"
-
-    log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
-
-    log "Starting cleanup in namespace=${NAMESPACE}"
-
-    # Delete completed/failed trial pods older than threshold
-    log "Removing completed/failed trial pods older than ${POD_AGE_HOURS}h..."
-    threshold=$((POD_AGE_HOURS * 3600))
-    for phase in Succeeded Failed; do
-      oc get pods -n "${NAMESPACE}" --field-selector="status.phase=${phase}" \
-        -l abevalflow/role=trial -o name 2>/dev/null | while read -r pod; do
-        age=$(oc get "${pod}" -n "${NAMESPACE}" -o jsonpath='{.metadata.creationTimestamp}' 2>/dev/null)
-        age_sec=$(python3 -c "
-    from datetime import datetime, timezone
-    t = datetime.fromisoformat('${age}'.replace('Z','+00:00'))
-    print(int((datetime.now(timezone.utc) - t).total_seconds()))
-    " 2>/dev/null || echo 0)
-        if [ "${age_sec}" -gt "${threshold}" ]; then
-          log "Deleting ${pod} (age=${age_sec}s, phase=${phase})"
-          oc delete "${pod}" -n "${NAMESPACE}" --grace-period=0 || true
-        fi
-      done
-    done
-
-    # Delete old PipelineRuns (keep recent N days worth)
-    log "Removing PipelineRuns older than ${PIPELINERUN_AGE_DAYS}d..."
-    if command -v tkn &>/dev/null; then
-      tkn pipelinerun delete -n "${NAMESPACE}" --keep="${PIPELINERUN_AGE_DAYS}" --force 2>/dev/null || true
-    else
-      log "tkn not available, skipping PipelineRun cleanup"
-    fi
-
-    # Prune empty image streams
-    log "Pruning empty image streams..."
-    oc get imagestream -n "${NAMESPACE}" -o name 2>/dev/null | while read -r is; do
-      tags=$(oc get "${is}" -n "${NAMESPACE}" -o jsonpath='{.status.tags}' 2>/dev/null || echo "[]")
-      count=$(python3 -c "import json; print(len(json.loads('${tags}') or []))" 2>/dev/null || echo 0)
-      if [ "${count}" -eq 0 ]; then
-        log "Deleting empty ${is}"
-        oc delete "${is}" -n "${NAMESPACE}" || true
-      fi
-    done
-
-    log "Cleanup complete"
+data: {}
+  # Populate from scripts/cleanup.sh — see comment above.

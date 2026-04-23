@@ -33,7 +33,10 @@ oc apply -f config/security/network_policy_<mode>.yaml
 oc apply -f config/storage/workspace_pvc.yaml
 oc apply -f config/storage/dead_letter_pvc.yaml
 
-# 5. Cleanup CronJob
+# 5. Cleanup — create ConfigMap from script, then apply CronJob
+oc create configmap cleanup-script \
+  --from-file=cleanup.sh=scripts/cleanup.sh \
+  -n ab-eval-flow --dry-run=client -o yaml | oc apply -f -
 oc apply -f config/storage/cleanup_cronjob.yaml
 
 # 6. Tekton tasks
@@ -48,6 +51,8 @@ oc create route edge el-submission-listener \
   --port=http-listener
 
 # 9. (Optional) LiteLLM — only for Vertex AI mode
+#    Creates a dedicated litellm ServiceAccount, Deployment, Service, and ConfigMap.
+#    Requires the litellm-credentials Secret (see LiteLLM Setup below).
 oc apply -f config/litellm/
 ```
 
@@ -100,7 +105,7 @@ curl http://localhost:4000/health
 | PVC | Purpose | Default Size |
 |---|---|---|
 | `abevalflow-workspace` | Shared pipeline workspace (source, builds, results) | 5Gi |
-| `abevalflow-dead-letter` | Retained artifacts from failed runs | 2Gi |
+| `abevalflow-dead-letter` | Reserved for failed-run artifacts (manual use for now) | 2Gi |
 
 Adjust sizes based on expected submission volume and image sizes.
 
@@ -112,7 +117,7 @@ Runs daily at 03:00 UTC. Configurable via environment variables:
 |---|---|---|
 | `NAMESPACE` | `ab-eval-flow` | Target namespace |
 | `POD_AGE_HOURS` | `24` | Delete completed/failed trial pods older than this |
-| `PIPELINERUN_AGE_DAYS` | `7` | Delete PipelineRuns older than this |
+| `PIPELINERUN_KEEP_COUNT` | `7` | Keep the N most recent PipelineRuns, delete the rest |
 
 To run cleanup manually:
 
@@ -138,7 +143,7 @@ Adjust based on cluster capacity and expected concurrency.
 ## Pod Security
 
 Trial pods spawned by Harbor's `OpenShiftEnvironment` should follow the
-security context documented in `config/security/pod_security.yaml`:
+security context documented in `config/security/pod_security_reference.yaml`:
 
 - `runAsNonRoot: true`
 - `allowPrivilegeEscalation: false`

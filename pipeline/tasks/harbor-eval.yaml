@@ -97,6 +97,7 @@ spec:
         CONFIG_DIR="$(workspaces.source.path)/_eval-configs"
 
         cd "$PIPELINE_DIR"
+        export PYTHONPATH="$PIPELINE_DIR"
         pip install --quiet --no-cache-dir pydantic pyyaml
 
         ARGS=(

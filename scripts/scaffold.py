@@ -157,10 +157,14 @@ def scaffold_submission(
         # directory (outside the build context) for display/metadata purposes.
         shutil.copy2(submission_dir / "instruction.md", target_dir / "instruction.md")
 
-        # Copy solution/ to task root so the oracle agent can find solve.sh
-        solution_src = submission_dir / "solution"
-        if solution_src.is_dir():
-            shutil.copytree(solution_src, target_dir / "solution", dirs_exist_ok=True)
+        # Copy solution/ and tests/ to task root: the OpenShift backend
+        # mounts emptyDir volumes over /tests and /solution inside the pod,
+        # hiding anything the Dockerfile COPY'd.  Harbor uploads these
+        # directories from the task root into the pod at runtime.
+        for rootdir in ("solution", "tests"):
+            src = submission_dir / rootdir
+            if src.is_dir():
+                shutil.copytree(src, target_dir / rootdir, dirs_exist_ok=True)
 
         logger.info("Scaffolded %s variant at %s", variant, target_dir)
 

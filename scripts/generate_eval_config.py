@@ -97,7 +97,7 @@ def build_variant_config(
         "override_storage_mb": metadata.storage_mb,
     }
 
-    kwargs: dict[str, Any] = {"cpu_request": "250m"}
+    kwargs: dict[str, Any] = {"cpu_request": "100m"}
 
     if eval_mode == "prebuilt":
         kwargs["image_ref"] = image_ref

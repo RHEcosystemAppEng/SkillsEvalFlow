@@ -157,6 +157,11 @@ def scaffold_submission(
         # directory (outside the build context) for display/metadata purposes.
         shutil.copy2(submission_dir / "instruction.md", target_dir / "instruction.md")
 
+        # Copy solution/ to task root so the oracle agent can find solve.sh
+        solution_src = submission_dir / "solution"
+        if solution_src.is_dir():
+            shutil.copytree(solution_src, target_dir / "solution", dirs_exist_ok=True)
+
         logger.info("Scaffolded %s variant at %s", variant, target_dir)
 
     return treatment_dir, control_dir

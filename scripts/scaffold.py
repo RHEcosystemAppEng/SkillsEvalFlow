@@ -144,6 +144,10 @@ def scaffold_submission(
         for filename, content in rendered.items():
             if filename == "Dockerfile":
                 dest = environment_dir / filename
+            elif filename == "test.sh":
+                tests_dir = target_dir / "tests"
+                tests_dir.mkdir(exist_ok=True)
+                dest = tests_dir / filename
             else:
                 dest = target_dir / filename
             dest.write_text(content)

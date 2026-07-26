@@ -400,6 +400,219 @@ def check_generic_advice(
     return findings
 
 
+# --- Example gap detection ---
+
+_INSTRUCTION_SIGNAL = re.compile(
+    r"\b(?:always|never|must|should|do\s+not|don'?t|ensure|make\s+sure)\b",
+    re.I,
+)
+_CODE_BLOCK_RE = re.compile(r"```")
+
+
+def check_example_gap(
+    file_path: Path,
+    relative_to: Path | None = None,
+) -> list[dict]:
+    """Flag skills with many instructions but no code examples."""
+    try:
+        content = file_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+
+    display_path = str(file_path.relative_to(relative_to)) if relative_to else str(file_path)
+
+    instruction_count = len(_INSTRUCTION_SIGNAL.findall(content))
+    code_block_count = len(_CODE_BLOCK_RE.findall(content)) // 2
+
+    if instruction_count >= 5 and code_block_count == 0:
+        return [
+            {
+                "severity": "low",
+                "rule_id": "quality-example-gap",
+                "message": (
+                    f"{instruction_count} instructions but no code examples. Add examples to clarify expected behavior."
+                ),
+                "file_path": display_path,
+                "category": "example_gap",
+            }
+        ]
+    return []
+
+
+# --- Negative-only instructions ---
+
+_NEGATIVE_KW = re.compile(
+    r"^\s*[-*]?\s*(?:don'?t|do\s+not|never|avoid|must\s+not|should\s+not)\s+",
+    re.I,
+)
+_POSITIVE_SIGNAL = re.compile(
+    r"\b(?:instead|prefer|rather|alternative|replace\s+with)\b",
+    re.I,
+)
+
+
+def check_negative_only(
+    file_path: Path,
+    relative_to: Path | None = None,
+) -> list[dict]:
+    """Flag instructions that only say what NOT to do."""
+    try:
+        content = file_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+
+    display_path = str(file_path.relative_to(relative_to)) if relative_to else str(file_path)
+    body = re.sub(r"^---.*?---\s*", "", content, flags=re.DOTALL)
+    lines = body.splitlines()
+    negative = 0
+    positive = 0
+    in_code_fence = False
+
+    for line in lines:
+        if line.strip().startswith("```"):
+            in_code_fence = not in_code_fence
+            continue
+        if in_code_fence:
+            continue
+        if _NEGATIVE_KW.match(line):
+            negative += 1
+            if _POSITIVE_SIGNAL.search(line):
+                positive += 1
+
+    if negative >= 3 and positive == 0:
+        return [
+            {
+                "severity": "low",
+                "rule_id": "quality-negative-only",
+                "message": (
+                    f"{negative} negative instructions but none say what to do instead. Add positive guidance."
+                ),
+                "file_path": display_path,
+                "category": "negative_only",
+            }
+        ]
+    return []
+
+
+# --- Stale references ---
+
+_STALE_PATTERNS: list[tuple[str, str, re.Pattern[str]]] = [
+    ("text-davinci", "Use a current model", re.compile(r"\btext-davinci-\d+\b", re.I)),
+    ("gpt-3.5-turbo", "Use gpt-4o or claude-sonnet", re.compile(r"\bgpt-3\.5-turbo\b", re.I)),
+    ("Node 14/16", "Use Node 20+", re.compile(r"\bnode\s*(?:14|16)\b", re.I)),
+    ("Python 3.7/3.8", "Use Python 3.11+", re.compile(r"\bpython\s*3\.[78]\b", re.I)),
+    ("tslint", "Use eslint", re.compile(r"\btslint\b", re.I)),
+    ("create-react-app", "Use vite or next", re.compile(r"\bcreate-react-app\b", re.I)),
+]
+
+
+def check_stale_references(
+    file_path: Path,
+    relative_to: Path | None = None,
+) -> list[dict]:
+    """Flag deprecated models, old runtimes, and sunset tools."""
+    try:
+        content = file_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+
+    display_path = str(file_path.relative_to(relative_to)) if relative_to else str(file_path)
+    findings: list[dict] = []
+
+    for label, fix, pattern in _STALE_PATTERNS:
+        if pattern.search(content):
+            findings.append(
+                {
+                    "severity": "low",
+                    "rule_id": "quality-stale-reference",
+                    "message": f"'{label}' is outdated. {fix}.",
+                    "file_path": display_path,
+                    "category": "stale_reference",
+                }
+            )
+    return findings
+
+
+# --- Scope overreach ---
+
+_OVERREACH_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "claims all code",
+        re.compile(
+            r"\b(?:all|every|any)\s+(?:code\s+)?(?:changes?|modifications?|files?)\b",
+            re.I,
+        ),
+    ),
+    (
+        "claims all tasks",
+        re.compile(r"\b(?:handles?|manages?)\s+(?:all|every|any)\s+(?:tasks?|requests?)\b", re.I),
+    ),
+]
+
+
+def check_scope_overreach(
+    file_path: Path,
+    relative_to: Path | None = None,
+) -> list[dict]:
+    """Flag skills claiming too broad a scope."""
+    try:
+        content = file_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+
+    display_path = str(file_path.relative_to(relative_to)) if relative_to else str(file_path)
+    findings: list[dict] = []
+
+    for label, pattern in _OVERREACH_PATTERNS:
+        if pattern.search(content):
+            findings.append(
+                {
+                    "severity": "low",
+                    "rule_id": "quality-scope-overreach",
+                    "message": f"'{label}' claims too broad a scope for reliable testing.",
+                    "file_path": display_path,
+                    "category": "scope_overreach",
+                }
+            )
+    return findings
+
+
+# --- Per-skill token budget ---
+
+_TOKENS_PER_CHAR = 0.25
+
+
+def check_skill_token_budget(
+    file_path: Path,
+    relative_to: Path | None = None,
+    max_tokens: int = 4000,
+) -> list[dict]:
+    """Flag individual skills that exceed a token budget."""
+    try:
+        content = file_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+
+    display_path = str(file_path.relative_to(relative_to)) if relative_to else str(file_path)
+    estimated_tokens = int(len(content) * _TOKENS_PER_CHAR)
+
+    if estimated_tokens > max_tokens:
+        return [
+            {
+                "severity": "medium",
+                "rule_id": "quality-skill-token-budget",
+                "message": (
+                    f"SKILL.md is ~{estimated_tokens} tokens"
+                    f" (exceeds {max_tokens} budget)."
+                    " Consider splitting into smaller files."
+                ),
+                "file_path": display_path,
+                "category": "token_budget",
+            }
+        ]
+    return []
+
+
 # --- Circular reference patterns ---
 
 _SKILL_REF_PATTERNS = [
@@ -531,6 +744,11 @@ def scan_directory(directory: Path) -> dict:
     for md_file in md_files:
         if md_file.name == "SKILL.md":
             all_findings.extend(check_description_quality(md_file, relative_to=directory))
+            all_findings.extend(check_example_gap(md_file, relative_to=directory))
+            all_findings.extend(check_negative_only(md_file, relative_to=directory))
+            all_findings.extend(check_stale_references(md_file, relative_to=directory))
+            all_findings.extend(check_scope_overreach(md_file, relative_to=directory))
+            all_findings.extend(check_skill_token_budget(md_file, relative_to=directory))
         all_findings.extend(check_broken_references(md_file, relative_to=directory))
         all_findings.extend(check_imprecise_instructions(md_file, relative_to=directory))
         all_findings.extend(check_unfinished_content(md_file, relative_to=directory))

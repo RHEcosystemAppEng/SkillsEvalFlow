@@ -128,6 +128,44 @@ COERCIVE_OVERRIDE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ),
 ]
 
+# --- Prompt exfiltration patterns (4) ---
+
+PROMPT_EXFIL_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "output system prompt",
+        re.compile(
+            r"(?:output|print|display|show|return|send)\s+(?:your\s+)?(?:system\s+)?(?:prompt|instructions|configuration)",
+            re.I,
+        ),
+    ),
+    (
+        "leak pipeline config",
+        re.compile(
+            r"(?:extract|exfiltrate|leak|expose)\s+(?:the\s+)?(?:pipeline|eval|system)\s+(?:config|settings)", re.I
+        ),
+    ),
+    (
+        "echo env vars",
+        re.compile(r"(?:echo|print|cat)\s+.*(?:\$ENV|\$\{|env\s+vars|environment\s+variables)", re.I),
+    ),
+    (
+        "dump internal state",
+        re.compile(
+            r"(?:dump|export|serialize)\s+(?:your\s+)?(?:internal|hidden|private)\s+(?:state|memory|context)", re.I
+        ),
+    ),
+]
+
+# --- Stealth persistence patterns (5) ---
+
+STEALTH_PERSISTENCE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    ("write to claude config", re.compile(r"(?:write|append|modify|update)\s+.*\.claude/", re.I)),
+    ("write to cursor config", re.compile(r"(?:write|append|modify|update)\s+.*\.cursor/", re.I)),
+    ("crontab modification", re.compile(r"\bcrontab\s+", re.I)),
+    ("autostart entry", re.compile(r"(?:autostart|systemctl\s+enable|rc\.local)", re.I)),
+    ("shell rc modification", re.compile(r"(?:write|append|modify).*(?:\.bashrc|\.zshrc|\.profile)", re.I)),
+]
+
 # --- Obfuscation patterns (8) ---
 
 OBFUSCATION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
@@ -189,6 +227,8 @@ def scan_file(file_path: Path, relative_to: Path | None = None) -> list[dict]:
         ("sensitive_env", "high", SENSITIVE_ENV_PATTERNS),
         ("dangerous_command", "high", DANGEROUS_COMMAND_PATTERNS),
         ("coercive_override", "high", COERCIVE_OVERRIDE_PATTERNS),
+        ("prompt_exfiltration", "critical", PROMPT_EXFIL_PATTERNS),
+        ("stealth_persistence", "critical", STEALTH_PERSISTENCE_PATTERNS),
         ("obfuscation", "high", OBFUSCATION_PATTERNS),
     ]
 

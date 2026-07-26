@@ -537,13 +537,6 @@ def check_stale_references(
 
 _OVERREACH_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (
-        "claims all code",
-        re.compile(
-            r"\b(?:all|every|any)\s+(?:code\s+)?(?:changes?|modifications?|files?)\b",
-            re.I,
-        ),
-    ),
-    (
         "claims all tasks",
         re.compile(r"\b(?:handles?|manages?)\s+(?:all|every|any)\s+(?:tasks?|requests?)\b", re.I),
     ),

@@ -340,12 +340,16 @@ class TestStaleReferences:
 
 
 class TestScopeOverreach:
-    def test_detects_all_code(self, tmp_path):
-        (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\nThis handles all code changes.")
+    def test_detects_all_tasks(self, tmp_path):
+        (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\nThis handles all tasks.")
         assert any(f["rule_id"] == "quality-scope-overreach" for f in check_scope_overreach(tmp_path / "SKILL.md"))
 
     def test_specific_scope_ok(self, tmp_path):
         (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\nThis formats Python files.")
+        assert len(check_scope_overreach(tmp_path / "SKILL.md")) == 0
+
+    def test_reviews_all_code_changes_ok(self, tmp_path):
+        (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\nReviews all code changes.")
         assert len(check_scope_overreach(tmp_path / "SKILL.md")) == 0
 
 

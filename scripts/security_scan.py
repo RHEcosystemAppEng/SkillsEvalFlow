@@ -17,12 +17,8 @@ from abevalflow.security.skillmd_scanner import scan_directory
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Security scan a submission directory"
-    )
-    parser.add_argument(
-        "submission_dir", type=Path, help="Path to the submission directory"
-    )
+    parser = argparse.ArgumentParser(description="Security scan a submission directory")
+    parser.add_argument("submission_dir", type=Path, help="Path to the submission directory")
     args = parser.parse_args(argv)
 
     submission_dir: Path = args.submission_dir

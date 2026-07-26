@@ -106,6 +106,28 @@ DANGEROUS_COMMAND_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("chown root", re.compile(r"\bchown\s+root\b")),
 ]
 
+# --- Coercive override patterns (5) ---
+
+COERCIVE_OVERRIDE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "forced compliance",
+        re.compile(r"\b(?:you\s+must|must\s+always)\s+(?:comply|obey|follow)\b", re.I),
+    ),
+    ("override safety", re.compile(r"\boverride\s+(?:all\s+)?safety\b", re.I)),
+    (
+        "disregard warnings",
+        re.compile(r"\bdisregard\s+(?:all\s+)?(?:warnings?|restrictions?)\b", re.I),
+    ),
+    (
+        "unconditional obedience",
+        re.compile(r"\b(?:always|unconditionally)\s+(?:obey|comply|execute)\b", re.I),
+    ),
+    (
+        "no refusal",
+        re.compile(r"\b(?:never|do\s+not)\s+(?:refuse|decline|reject)\b", re.I),
+    ),
+]
+
 # --- Obfuscation patterns (8) ---
 
 OBFUSCATION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
@@ -166,6 +188,7 @@ def scan_file(file_path: Path, relative_to: Path | None = None) -> list[dict]:
         ("sensitive_path", "high", SENSITIVE_PATH_PATTERNS),
         ("sensitive_env", "high", SENSITIVE_ENV_PATTERNS),
         ("dangerous_command", "high", DANGEROUS_COMMAND_PATTERNS),
+        ("coercive_override", "high", COERCIVE_OVERRIDE_PATTERNS),
         ("obfuscation", "high", OBFUSCATION_PATTERNS),
     ]
 

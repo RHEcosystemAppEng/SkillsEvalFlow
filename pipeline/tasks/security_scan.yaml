@@ -5,9 +5,10 @@ metadata:
   namespace: ab-eval-flow
 spec:
   description: >-
-    Scans SKILL.md files in a submission for prompt injection patterns,
-    credential access references, and dangerous commands.  Blocks the
-    pipeline on ERROR-severity findings.  No LLM calls required.
+    Scans SKILL.md files in a submission for prompt injection, credential
+    access, coercive override, prompt exfiltration, stealth persistence,
+    and obfuscation patterns.  Blocks the pipeline on high/critical
+    severity findings.  No LLM calls required.
   params:
     - name: submission-dir
       type: string
@@ -52,7 +53,7 @@ spec:
         SUBMISSION_PATH="$(workspaces.source.path)/submissions/$(params.submission-dir)"
 
         cd "$PIPELINE_DIR"
-        pip install --quiet --no-cache-dir pydantic pyyaml
+        pip install --quiet --no-cache-dir pyyaml
         export PYTHONPATH="$PIPELINE_DIR"
 
         SCAN_EXIT=0

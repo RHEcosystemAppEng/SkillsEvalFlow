@@ -1,10 +1,9 @@
-"""Security scan a submission directory for prompt injection and credential access.
+"""Security scan a submission directory for security issues.
 
-Checks SKILL.md files for:
-  1. Prompt injection patterns (17 regex patterns, context-aware severity)
-  2. Credential access patterns (sensitive paths, env vars, dangerous commands)
+Wraps abevalflow.security.skillmd_scanner.scan_directory to produce JSON
+output compatible with the gate evaluation pipeline.
 
-Exit codes: 0 = pass (no errors, warnings only), 1 = blocked (ERROR findings).
+Exit codes: 0 = pass (no high/critical findings), 1 = blocked.
 """
 
 from __future__ import annotations
@@ -14,7 +13,7 @@ import json
 import sys
 from pathlib import Path
 
-from abevalflow.security_scanner import scan_submission
+from abevalflow.security.skillmd_scanner import scan_directory
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,9 +35,18 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result, indent=2))
         return 1
 
-    scan_result = scan_submission(submission_dir)
-    print(json.dumps(scan_result.model_dump(), indent=2))
-    return 0 if scan_result.passed else 1
+    scan_result = scan_directory(submission_dir)
+    findings = scan_result["findings"]
+    blocking = [f for f in findings if f.get("severity") in ("critical", "high")]
+    passed = len(blocking) == 0
+
+    output = {
+        "passed": passed,
+        "findings": findings,
+        "summary": f"{len(blocking)} blocking finding(s), {len(findings)} total in {submission_dir.name}",
+    }
+    print(json.dumps(output, indent=2))
+    return 0 if passed else 1
 
 
 if __name__ == "__main__":

@@ -347,6 +347,52 @@ def aggregate_scorecard(
             gate_result.score,
         )
 
+    # Red team gate: check for adversarial findings from Promptfoo
+    if policy.is_enabled("red_team"):
+        redteam_results_path = reports_dir / "redteam-results.json"
+        if redteam_results_path.exists():
+            logger.info("Processing red team gate")
+            try:
+                with open(redteam_results_path) as f:
+                    redteam_data = json.load(f)
+                results_list = redteam_data.get("results", {}).get("results", [])
+                findings_count = sum(
+                    1 for r in results_list
+                    if not r.get("gradingResult", {}).get("pass", True)
+                    and "No response text" not in r.get("response", {}).get("output", "")
+                )
+                redteam_score = 1.0 - (findings_count / max(len(results_list), 1))
+                gate_policy_item = policy.get_gate_policy("red_team")
+                threshold = gate_policy_item.threshold if gate_policy_item.threshold is not None else 0.0
+                redteam_passed = findings_count == 0
+
+                redteam_gate = GateResult(
+                    gate_type=GateType.SECURITY,
+                    gate_name="red_team",
+                    policy_key="red_team",
+                    passed=redteam_passed,
+                    score=redteam_score,
+                    mode=gate_policy_item.mode,
+                    threshold=threshold,
+                    findings=[],
+                    details={
+                        "total_tests": len(results_list),
+                        "findings_count": findings_count,
+                        "framework": "promptfoo",
+                    },
+                )
+                gates.append(redteam_gate)
+                push_result = _maybe_push_fact(redteam_gate, policy)
+                if push_result:
+                    fact_push_results.append(push_result)
+                logger.info("Red team: passed=%s, score=%.3f, findings=%d", redteam_passed, redteam_score, findings_count)
+            except Exception as e:
+                logger.warning("Failed to process red team results: %s", e)
+        else:
+            logger.info("No red team results found at %s, skipping gate", redteam_results_path)
+    else:
+        logger.info("Red team gate is disabled, skipping")
+
     recommendation, reason = apply_combination_logic(gates, policy)
     logger.info("Final recommendation: %s (%s)", recommendation, reason)
 

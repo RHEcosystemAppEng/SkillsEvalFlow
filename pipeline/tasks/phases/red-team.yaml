@@ -1,0 +1,287 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: red-team
+  namespace: ab-eval-flow
+  labels:
+    app.kubernetes.io/name: abevalflow
+    app.kubernetes.io/component: phase
+spec:
+  description: >-
+    Red team evaluation phase: runs Promptfoo adversarial testing against the
+    deployed agent/MCP server. Generates domain-aware attacks based on submission
+    metadata and scores responses with LLM-as-judge. Gated on test phase passing.
+  params:
+    - name: submission-dir
+      type: string
+      description: Submission directory name under submissions/
+    - name: submission-name
+      type: string
+      description: Validated submission name from metadata.yaml
+    - name: eval-engine
+      type: string
+      description: Evaluation engine (harbor, ase, mcpchecker, a2a, aeh, both)
+    - name: agent-endpoint
+      type: string
+      default: ""
+      description: Agent/MCP endpoint URL (auto-detected if empty)
+    - name: report-prefix
+      type: string
+      description: MinIO report prefix
+    - name: pipeline-run-name
+      type: string
+      description: PipelineRun name for DB records
+    - name: pipeline-repo-url
+      type: string
+      default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+    - name: pipeline-repo-revision
+      type: string
+      default: "main"
+    - name: red-team-mode
+      type: string
+      default: "regression"
+      description: "Red team mode: regression (baked test suite, no generation) or generate (fresh AI attacks via Promptfoo Cloud)"
+    - name: llm-base-url
+      type: string
+      default: "http://litellm.ab-eval-flow.svc:4000/v1"
+    - name: llm-model
+      type: string
+      default: "claude-sonnet"
+    - name: llm-api-key
+      type: string
+      default: ""
+    - name: minio-endpoint
+      type: string
+      default: "minio.ab-eval-flow.svc:9000"
+    - name: minio-bucket
+      type: string
+      default: "ab-eval-reports"
+  workspaces:
+    - name: source
+      description: Workspace containing the cloned submissions repository
+  results:
+    - name: redteam-passed
+      description: Whether red team evaluation passed (no vulnerabilities found)
+    - name: redteam-findings
+      description: Number of red team findings (vulnerabilities)
+  steps:
+    - name: setup
+      image: registry.access.redhat.com/ubi9/python-311:9.6
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "=== RED TEAM PHASE: Setup ==="
+
+        EVAL_ENGINE="$(params.eval-engine)"
+
+        # Skip for engines that don't have a live endpoint to test
+        if [ "$EVAL_ENGINE" = "ase" ] || [ "$EVAL_ENGINE" = "both" ]; then
+          echo "Skipping red team for eval-engine=$EVAL_ENGINE (no live endpoint)"
+          echo -n "true" > "$(results.redteam-passed.path)"
+          echo -n "0" > "$(results.redteam-findings.path)"
+          exit 0
+        fi
+
+        # Clone pipeline repo for scripts
+        PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
+        if [ -d "$PIPELINE_DIR/.git" ]; then
+          echo "Pipeline repo exists, updating..."
+          cd "$PIPELINE_DIR"
+          git fetch origin "$(params.pipeline-repo-revision)" 2>/dev/null || true
+          git reset --hard FETCH_HEAD 2>/dev/null || true
+        else
+          git clone --depth 1 --branch "$(params.pipeline-repo-revision)" \
+            "$(params.pipeline-repo-url)" "$PIPELINE_DIR"
+        fi
+
+        # Initialize results with defaults
+        echo -n "true" > "$(results.redteam-passed.path)"
+        echo -n "0" > "$(results.redteam-findings.path)"
+        echo "Setup complete"
+
+    - name: generate-config
+      image: registry.access.redhat.com/ubi9/python-311:9.6
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "=== RED TEAM PHASE: Generate Config ==="
+
+        EVAL_ENGINE="$(params.eval-engine)"
+        if [ "$EVAL_ENGINE" = "ase" ] || [ "$EVAL_ENGINE" = "both" ]; then
+          echo "Skipped"
+          exit 0
+        fi
+
+        PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
+        SUBMISSION_PATH="$(workspaces.source.path)/submissions/$(params.submission-dir)"
+        CONFIG_DIR="$(workspaces.source.path)/_redteam"
+        mkdir -p "$CONFIG_DIR"
+
+        pip install --quiet --no-cache-dir pyyaml pydantic 2>&1 | tail -3
+        export PYTHONPATH="$PIPELINE_DIR"
+
+        python3 "$PIPELINE_DIR/scripts/generate_redteam_config.py" \
+          --submission-path "$SUBMISSION_PATH" \
+          --eval-engine "$EVAL_ENGINE" \
+          --agent-endpoint "$(params.agent-endpoint)" \
+          --llm-base-url "$(params.llm-base-url)" \
+          --llm-model "$(params.llm-model)" \
+          --llm-api-key "$(params.llm-api-key)" \
+          --mode "$(params.red-team-mode)" \
+          --output "$CONFIG_DIR/promptfooconfig.yaml"
+
+        echo "Config generated at $CONFIG_DIR/promptfooconfig.yaml"
+        cat "$CONFIG_DIR/promptfooconfig.yaml"
+
+    - name: run-redteam
+      image: quay.io/rh-ee-ikrispin/abevalflow-redteam:latest
+      env:
+        - name: PROMPTFOO_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: promptfoo-cloud-credentials
+              key: api-key
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "=== RED TEAM PHASE: Run Promptfoo ==="
+
+        # Configure promptfoo cloud auth for headless generation
+        mkdir -p /app/.promptfoo
+        cat > /app/.promptfoo/promptfoo.yaml << CFGEOF
+        cloud:
+          appUrl: https://www.promptfoo.app
+          apiHost: https://www.promptfoo.app
+          apiKey: "${PROMPTFOO_API_KEY}"
+        CFGEOF
+
+        EVAL_ENGINE="$(params.eval-engine)"
+        if [ "$EVAL_ENGINE" = "ase" ] || [ "$EVAL_ENGINE" = "both" ]; then
+          echo "Skipped"
+          exit 0
+        fi
+
+        CONFIG_DIR="$(workspaces.source.path)/_redteam"
+        REPORT_DIR="$(workspaces.source.path)/reports/$(params.submission-name)"
+        mkdir -p "$REPORT_DIR"
+
+        if [ ! -f "$CONFIG_DIR/promptfooconfig.yaml" ]; then
+          echo "ERROR: Config not found at $CONFIG_DIR/promptfooconfig.yaml"
+          echo -n "true" > "$(results.redteam-passed.path)"
+          echo -n "0" > "$(results.redteam-findings.path)"
+          exit 0
+        fi
+
+        cd "$CONFIG_DIR"
+
+        # Copy response parser if needed
+        cp /app/responseParser.js . 2>/dev/null || true
+
+        MODE="$(params.red-team-mode)"
+
+        if [ "$MODE" = "generate" ]; then
+          # Generate fresh attacks via Promptfoo Cloud AI, then eval
+          echo "Mode: generate (fresh AI-generated attacks)"
+          echo "Generating red team attacks..."
+          promptfoo redteam generate \
+            -c promptfooconfig.yaml \
+            --no-cache \
+            -o redteam-generated.yaml \
+            2>&1 | tail -20
+
+          echo "Running evaluation..."
+          set +e
+          promptfoo redteam eval \
+            -c redteam-generated.yaml \
+            --no-cache \
+            -j 4 \
+            -o "$REPORT_DIR/redteam-results.json" \
+            2>&1 | tee /tmp/redteam-output.txt
+          EVAL_EXIT=$?
+          set -e
+        else
+          # Regression mode: use baked-in test suite (no generation, no cloud auth)
+          echo "Mode: regression (baked test suite, 285 tests)"
+          cp /app/redteam-regression.yaml ./eval-config.yaml
+
+          set +e
+          promptfoo eval \
+            -c eval-config.yaml \
+            --no-cache \
+            -j 4 \
+            -o "$REPORT_DIR/redteam-results.json" \
+            2>&1 | tee /tmp/redteam-output.txt
+          EVAL_EXIT=$?
+          set -e
+        fi
+
+        # Parse results
+        FINDINGS=0
+        PASSED="true"
+
+        if [ -f "$REPORT_DIR/redteam-results.json" ]; then
+          FINDINGS=$(python3 -c "import json; d=json.load(open('$REPORT_DIR/redteam-results.json')); results=d.get('results',{}).get('results',[]); print(sum(1 for r in results if not r.get('gradingResult',{}).get('pass',True)))" 2>/dev/null || echo "0")
+        fi
+
+        if [ "$FINDINGS" -gt "0" ]; then
+          PASSED="false"
+        fi
+
+        echo -n "$PASSED" > "$(results.redteam-passed.path)"
+        echo -n "$FINDINGS" > "$(results.redteam-findings.path)"
+
+        echo ""
+        echo "Red team results: $FINDINGS findings, passed=$PASSED"
+
+    - name: persist
+      image: registry.access.redhat.com/ubi9/python-311:9.6
+      env:
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-user
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-password
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "=== RED TEAM PHASE: Persist Results ==="
+
+        EVAL_ENGINE="$(params.eval-engine)"
+        if [ "$EVAL_ENGINE" = "ase" ] || [ "$EVAL_ENGINE" = "both" ]; then
+          echo "Skipped"
+          exit 0
+        fi
+
+        REPORT_DIR="$(workspaces.source.path)/reports/$(params.submission-name)"
+        RESULTS_FILE="$REPORT_DIR/redteam-results.json"
+
+        if [ ! -f "$RESULTS_FILE" ]; then
+          echo "No results file to persist"
+          exit 0
+        fi
+
+        pip install --quiet --no-cache-dir minio 2>&1 | tail -1
+
+        REPORT_PREFIX="$(params.report-prefix)"
+        MINIO_ENDPOINT="$(params.minio-endpoint)"
+        MINIO_BUCKET="$(params.minio-bucket)"
+
+        python3 -c "
+        import os, sys
+        from minio import Minio
+        results_path = '$RESULTS_FILE'
+        prefix = '$REPORT_PREFIX'
+        endpoint = '$MINIO_ENDPOINT'
+        bucket = '$MINIO_BUCKET'
+        client = Minio(endpoint, access_key=os.environ['MINIO_ACCESS_KEY'], secret_key=os.environ['MINIO_SECRET_KEY'], secure=False)
+        obj = prefix + '/red_team/redteam-results.json'
+        client.fput_object(bucket, obj, results_path)
+        print('Uploaded: ' + obj)
+        "
+
+        echo "Red team results persisted to MinIO"

@@ -209,6 +209,61 @@ class LlmConfig(BaseModel):
     )
 
 
+class RedTeamMode(StrEnum):
+    SMOKE = "smoke"
+    FULL = "full"
+
+
+class RedTeamConfig(BaseModel):
+    """Red team evaluation configuration.
+
+    Controls adversarial security testing via Promptfoo.
+    Default: enabled with smoke mode (25 tests) and no auth context.
+
+    Example in metadata.yaml:
+        red_team:
+          enabled: true
+          mode: full
+          auth_context: |
+            Users are authenticated Red Hat customers with valid SSO tokens.
+          purpose: |
+            AI agent providing Red Hat Insights advisory services.
+          policy: |
+            Must not provide exploitation instructions even for authenticated users.
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable red team evaluation for this submission",
+    )
+    mode: RedTeamMode = Field(
+        default=RedTeamMode.SMOKE,
+        description="smoke (25 tests, ~$2, ~3min) or full (250 tests, ~$20, ~30min)",
+    )
+    auth_context: str | None = Field(
+        default=None,
+        description=(
+            "Auth context for LLM-as-judge grading. When set, informs the grader "
+            "that users are authenticated and certain operations are legitimate. "
+            "Default: None (assume adversarial/unauthenticated user)."
+        ),
+    )
+    purpose: str | None = Field(
+        default=None,
+        description=(
+            "Override auto-detected agent purpose. Used by Promptfoo to generate "
+            "domain-aware attacks. Falls back to submission description if not set."
+        ),
+    )
+    policy: str | None = Field(
+        default=None,
+        description=(
+            "Custom security policy for the agent. Defines what the agent must "
+            "refuse regardless of auth context. Uses a default policy if not set."
+        ),
+    )
+
+
 class McpConfig(BaseModel):
     """MCP server configuration for MCPChecker evaluations.
 
@@ -576,6 +631,14 @@ class SubmissionMetadata(BaseModel):
             "MCP server configuration for MCPChecker evaluations. "
             "Required when eval_engine is 'mcpchecker'. The referenced secret "
             "must be created by the user in the ab-eval-flow namespace."
+        ),
+    )
+
+    red_team: RedTeamConfig | None = Field(
+        default=None,
+        description=(
+            "Red team evaluation configuration. Controls adversarial security "
+            "testing via Promptfoo. Default: enabled with smoke mode and no auth context."
         ),
     )
 

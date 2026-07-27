@@ -142,6 +142,8 @@ spec:
     - name: run-redteam
       image: quay.io/rh-ee-ikrispin/abevalflow-redteam:latest
       env:
+        - name: CI
+          value: "true"
         - name: PROMPTFOO_API_KEY
           valueFrom:
             secretKeyRef:

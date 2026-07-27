@@ -108,7 +108,13 @@ spec:
 
         EVAL_ENGINE="$(params.eval-engine)"
         if [ "$EVAL_ENGINE" = "ase" ] || [ "$EVAL_ENGINE" = "both" ]; then
-          echo "Skipped"
+          echo "Skipped (eval-engine=$EVAL_ENGINE)"
+          exit 0
+        fi
+
+        MODE="$(params.red-team-mode)"
+        if [ "$MODE" = "regression" ]; then
+          echo "Skipped (regression mode uses baked-in test suite)"
           exit 0
         fi
 
@@ -127,7 +133,7 @@ spec:
           --llm-base-url "$(params.llm-base-url)" \
           --llm-model "$(params.llm-model)" \
           --llm-api-key "$(params.llm-api-key)" \
-          --mode "$(params.red-team-mode)" \
+          --mode "$MODE" \
           --output "$CONFIG_DIR/promptfooconfig.yaml"
 
         echo "Config generated at $CONFIG_DIR/promptfooconfig.yaml"
@@ -163,23 +169,20 @@ spec:
 
         CONFIG_DIR="$(workspaces.source.path)/_redteam"
         REPORT_DIR="$(workspaces.source.path)/reports/$(params.submission-name)"
-        mkdir -p "$REPORT_DIR"
-
-        if [ ! -f "$CONFIG_DIR/promptfooconfig.yaml" ]; then
-          echo "ERROR: Config not found at $CONFIG_DIR/promptfooconfig.yaml"
-          echo -n "true" > "$(results.redteam-passed.path)"
-          echo -n "0" > "$(results.redteam-findings.path)"
-          exit 0
-        fi
-
-        cd "$CONFIG_DIR"
-
-        # Copy response parser if needed
-        cp /app/responseParser.js . 2>/dev/null || true
+        mkdir -p "$REPORT_DIR" "$CONFIG_DIR"
 
         MODE="$(params.red-team-mode)"
 
+        cd "$CONFIG_DIR"
+        cp /app/responseParser.js . 2>/dev/null || true
+
         if [ "$MODE" = "generate" ]; then
+          if [ ! -f "$CONFIG_DIR/promptfooconfig.yaml" ]; then
+            echo "ERROR: Config not found at $CONFIG_DIR/promptfooconfig.yaml"
+            echo -n "true" > "$(results.redteam-passed.path)"
+            echo -n "0" > "$(results.redteam-findings.path)"
+            exit 0
+          fi
           # Generate fresh attacks via Promptfoo Cloud AI, then eval
           echo "Mode: generate (fresh AI-generated attacks)"
           echo "Generating red team attacks..."

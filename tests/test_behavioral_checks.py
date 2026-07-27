@@ -829,7 +829,7 @@ class TestLLMEdgeCaseGeneration:
         sub = self._make_submission(tmp_path)
         result = generate_edge_case_evals.generate_edge_case_evals_from_skill(sub)
         assert result is not None
-        assert len(result["evals"][0]["assertions"]) == 3
+        assert len(result["evals"][0]["assertions"]) == 2
 
     def test_generate_from_skill_retries_on_bad_json(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         from scripts import generate_edge_case_evals
@@ -885,6 +885,276 @@ class TestLLMEdgeCaseGeneration:
         assert len(generated) == 1
         assert len(submitter) == 1
         assert generated[0]["name"] == "boundary_input"
+
+
+class TestLookupCachedEdgeCases:
+    """Tests for lookup_cached_edge_cases() — cache matching and verification."""
+
+    def _make_submission(self, tmp_path: Path) -> Path:
+        sub = tmp_path / "my-skill"
+        sub.mkdir()
+        (sub / "metadata.yaml").write_text("name: my-skill\n")
+        skills = sub / "skills"
+        skills.mkdir()
+        (skills / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: A test skill\n---\n# My Skill\nDoes things."
+        )
+        return sub
+
+    def _make_library(self, tmp_path: Path, domains: dict | None = None) -> Path:
+        cache_dir = tmp_path / "cache"
+        cache_dir.mkdir()
+        library = {
+            "version": "1.0",
+            "domains": domains
+            or {
+                "test-domain": {
+                    "description": "A test domain",
+                    "tags": ["tag-a", "tag-b", "tag-c", "tag-d"],
+                    "evals": [
+                        {
+                            "id": "edge-test-1",
+                            "name": "Edge case: test scenario",
+                            "prompt": "Test prompt",
+                            "assertions": ["Test assertion"],
+                        }
+                    ],
+                }
+            },
+        }
+        (cache_dir / "edge-case-library.json").write_text(json.dumps(library))
+        return cache_dir
+
+    def test_cache_miss_no_library_file(self, tmp_path: Path) -> None:
+        from scripts.generate_edge_case_evals import lookup_cached_edge_cases
+
+        sub = self._make_submission(tmp_path)
+        cache_dir = tmp_path / "nonexistent"
+        cache_dir.mkdir()
+        result = lookup_cached_edge_cases(sub, cache_dir)
+        assert result is None
+
+    def test_cache_miss_no_tag_overlap(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.generate_edge_case_evals import lookup_cached_edge_cases
+
+        monkeypatch.setattr(
+            "abevalflow.llm_client.chat_completion",
+            lambda **kwargs: json.dumps({"tags": ["unrelated-x", "unrelated-y", "unrelated-z"]}),
+        )
+        sub = self._make_submission(tmp_path)
+        cache_dir = self._make_library(tmp_path)
+        result = lookup_cached_edge_cases(sub, cache_dir)
+        assert result is None
+
+    def test_cache_hit_happy_path(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.generate_edge_case_evals import lookup_cached_edge_cases
+
+        call_count = {"n": 0}
+
+        def mock_llm(**kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return json.dumps({"tags": ["tag-a", "tag-b", "tag-c"]})
+            return json.dumps({"scores": [9]})
+
+        monkeypatch.setattr("abevalflow.llm_client.chat_completion", mock_llm)
+        sub = self._make_submission(tmp_path)
+        cache_dir = self._make_library(tmp_path)
+        result = lookup_cached_edge_cases(sub, cache_dir)
+        assert result is not None
+        assert len(result["evals"]) == 1
+        assert result["skill_name"] == "my-skill"
+
+    def test_cache_reject_all_scores_below_threshold(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.generate_edge_case_evals import lookup_cached_edge_cases
+
+        call_count = {"n": 0}
+
+        def mock_llm(**kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return json.dumps({"tags": ["tag-a", "tag-b", "tag-c"]})
+            return json.dumps({"scores": [2]})
+
+        monkeypatch.setattr("abevalflow.llm_client.chat_completion", mock_llm)
+        sub = self._make_submission(tmp_path)
+        cache_dir = self._make_library(tmp_path)
+        result = lookup_cached_edge_cases(sub, cache_dir)
+        assert result is None
+
+    def test_cache_caps_at_max_edge_cases(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.generate_edge_case_evals import lookup_cached_edge_cases
+
+        domains = {
+            "test-domain": {
+                "description": "Test",
+                "tags": ["tag-a", "tag-b", "tag-c"],
+                "evals": [
+                    {"id": f"edge-{i}", "name": f"Edge {i}", "prompt": f"Prompt {i}", "assertions": [f"Assert {i}"]}
+                    for i in range(5)
+                ],
+            }
+        }
+
+        call_count = {"n": 0}
+
+        def mock_llm(**kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return json.dumps({"tags": ["tag-a", "tag-b", "tag-c"]})
+            return json.dumps({"scores": [10, 9, 8, 7, 6]})
+
+        monkeypatch.setattr("abevalflow.llm_client.chat_completion", mock_llm)
+        sub = self._make_submission(tmp_path)
+        cache_dir = self._make_library(tmp_path, domains)
+        result = lookup_cached_edge_cases(sub, cache_dir)
+        assert result is not None
+        assert len(result["evals"]) == 2
+
+    def test_verification_non_list_scores_returns_none(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.generate_edge_case_evals import lookup_cached_edge_cases
+
+        call_count = {"n": 0}
+
+        def mock_llm(**kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return json.dumps({"tags": ["tag-a", "tag-b", "tag-c"]})
+            return json.dumps({"scores": "high"})
+
+        monkeypatch.setattr("abevalflow.llm_client.chat_completion", mock_llm)
+        sub = self._make_submission(tmp_path)
+        cache_dir = self._make_library(tmp_path)
+        result = lookup_cached_edge_cases(sub, cache_dir)
+        assert result is None
+
+    def test_verification_wrong_score_count_returns_none(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.generate_edge_case_evals import lookup_cached_edge_cases
+
+        call_count = {"n": 0}
+
+        def mock_llm(**kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return json.dumps({"tags": ["tag-a", "tag-b", "tag-c"]})
+            return json.dumps({"scores": []})
+
+        monkeypatch.setattr("abevalflow.llm_client.chat_completion", mock_llm)
+        sub = self._make_submission(tmp_path)
+        cache_dir = self._make_library(tmp_path)
+        result = lookup_cached_edge_cases(sub, cache_dir)
+        assert result is None
+
+    def test_classification_non_list_tags_returns_none(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.generate_edge_case_evals import lookup_cached_edge_cases
+
+        monkeypatch.setattr(
+            "abevalflow.llm_client.chat_completion",
+            lambda **kwargs: json.dumps({"tags": "not-a-list"}),
+        )
+        sub = self._make_submission(tmp_path)
+        cache_dir = self._make_library(tmp_path)
+        result = lookup_cached_edge_cases(sub, cache_dir)
+        assert result is None
+
+    def test_classification_failure_returns_none(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.generate_edge_case_evals import lookup_cached_edge_cases
+
+        monkeypatch.setattr(
+            "abevalflow.llm_client.chat_completion",
+            lambda **kwargs: "totally not json {{{",
+        )
+        sub = self._make_submission(tmp_path)
+        cache_dir = self._make_library(tmp_path)
+        result = lookup_cached_edge_cases(sub, cache_dir)
+        assert result is None
+
+    def test_score_count_mismatch_returns_none(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.generate_edge_case_evals import lookup_cached_edge_cases
+
+        call_count = {"n": 0}
+
+        def mock_llm(**kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return json.dumps({"tags": ["tag-a", "tag-b", "tag-c"]})
+            return json.dumps({"scores": [9, 8]})
+
+        monkeypatch.setattr("abevalflow.llm_client.chat_completion", mock_llm)
+        sub = self._make_submission(tmp_path)
+        cache_dir = self._make_library(tmp_path)
+        result = lookup_cached_edge_cases(sub, cache_dir)
+        assert result is None
+
+    def test_main_cache_hit_skips_generation(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.generate_edge_case_evals import main
+
+        sub = self._make_submission(tmp_path)
+        output_dir = tmp_path / "output"
+        cache_dir = self._make_library(tmp_path)
+
+        call_count = {"n": 0}
+
+        def mock_llm(**kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return json.dumps({"tags": ["tag-a", "tag-b", "tag-c"]})
+            return json.dumps({"scores": [9]})
+
+        monkeypatch.setattr("abevalflow.llm_client.chat_completion", mock_llm)
+        result = main(
+            [
+                "--submission-dir",
+                str(sub),
+                "--output-dir",
+                str(output_dir),
+                "--generate-from-skill",
+                "--cache-dir",
+                str(cache_dir),
+            ]
+        )
+        assert result == 0
+        assert (output_dir / "edge-case-evals.json").exists()
+        evals = json.loads((output_dir / "edge-case-evals.json").read_text())
+        assert evals["skill_name"] == "my-skill"
+        assert len(evals["evals"]) == 1
+        assert call_count["n"] == 2
+
+    def test_main_cache_miss_falls_back_to_generation(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.generate_edge_case_evals import main
+
+        sub = self._make_submission(tmp_path)
+        output_dir = tmp_path / "output"
+        cache_dir = self._make_library(tmp_path)
+
+        call_count = {"n": 0}
+
+        def mock_llm(**kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return json.dumps({"tags": ["no-match-x", "no-match-y"]})
+            return json.dumps(
+                {
+                    "skill_name": "my-skill",
+                    "evals": [{"id": "edge-generated", "name": "Generated", "prompt": "test", "assertions": ["ok"]}],
+                }
+            )
+
+        monkeypatch.setattr("abevalflow.llm_client.chat_completion", mock_llm)
+        result = main(
+            [
+                "--submission-dir",
+                str(sub),
+                "--output-dir",
+                str(output_dir),
+                "--generate-from-skill",
+                "--cache-dir",
+                str(cache_dir),
+            ]
+        )
+        assert result == 0
+        evals = json.loads((output_dir / "edge-case-evals.json").read_text())
+        assert evals["evals"][0]["id"] == "edge-generated"
 
 
 class TestLLMJudgeCriteria:

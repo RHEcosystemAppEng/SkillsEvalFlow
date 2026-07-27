@@ -476,11 +476,13 @@ spec:
         export PYTHONPATH="$PIPELINE_DIR"
         pip install --quiet --no-cache-dir pyyaml pydantic openai 2>/dev/null || true
 
-        # Generate skill-specific edge cases from SKILL.md via LLM
+        # Generate skill-specific edge cases: try cache first, fall back to LLM generation
         python scripts/generate_edge_case_evals.py \
           --submission-dir "$SUBMISSION_PATH" \
           --output-dir "$EDGE_EVALS_DIR" \
-          --generate-from-skill || echo "WARNING: LLM edge case generation failed, falling back to submitter-provided only"
+          --generate-from-skill \
+          --cache-dir "$PIPELINE_DIR/config/edge-case-cache" \
+          || echo "WARNING: LLM edge case generation failed, falling back to submitter-provided only"
 
         # Also generate evals from submitter-provided edge_cases/*.md (if any)
         EDGE_CASES_DIR="$SUBMISSION_PATH/edge_cases"

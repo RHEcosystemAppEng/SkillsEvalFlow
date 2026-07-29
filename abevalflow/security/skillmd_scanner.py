@@ -106,6 +106,62 @@ DANGEROUS_COMMAND_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("chown root", re.compile(r"\bchown\s+root\b")),
 ]
 
+# --- Coercive override patterns (4) ---
+
+COERCIVE_OVERRIDE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "forced compliance",
+        re.compile(r"\b(?:you\s+must|must\s+always)\s+(?:comply|obey)\b", re.I),
+    ),
+    ("override safety", re.compile(r"\boverride\s+(?:all\s+)?safety\b", re.I)),
+    (
+        "disregard warnings",
+        re.compile(r"\bdisregard\s+(?:all\s+)?(?:warnings?|restrictions?)\b", re.I),
+    ),
+    (
+        "no refusal",
+        re.compile(r"\b(?:never|do\s+not)\s+(?:refuse|decline|reject)\b", re.I),
+    ),
+]
+
+# --- Prompt exfiltration patterns (3) ---
+
+_NEGATION_PREFIX = re.compile(r"^\s*(?:[-*]\s*)?(?:don'?t|do\s+not|never|avoid)\s+", re.I)
+
+PROMPT_EXFIL_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "output system prompt",
+        re.compile(
+            r"(?:output|print|display|show|return|send)\s+(?:your\s+)?system\s+(?:prompt|instructions|configuration)",
+            re.I,
+        ),
+    ),
+    (
+        "leak pipeline config",
+        re.compile(
+            r"(?:extract|exfiltrate|leak|expose)\s+(?:the\s+)?(?:pipeline|eval|system)\s+(?:config|settings)",
+            re.I,
+        ),
+    ),
+    (
+        "dump internal state",
+        re.compile(
+            r"(?:dump|export|serialize)\s+(?:your\s+)?(?:internal|hidden|private)\s+(?:state|memory|context)",
+            re.I,
+        ),
+    ),
+]
+
+# --- Stealth persistence patterns (5) ---
+
+STEALTH_PERSISTENCE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    ("write to claude config", re.compile(r"(?:write|append|modify|update)\s+.*\.claude/", re.I)),
+    ("write to cursor config", re.compile(r"(?:write|append|modify|update)\s+.*\.cursor/", re.I)),
+    ("crontab modification", re.compile(r"\bcrontab\s+(?:-[er]|--)", re.I)),
+    ("autostart entry", re.compile(r"(?:autostart|systemctl\s+enable|rc\.local)", re.I)),
+    ("shell rc modification", re.compile(r"(?:write|append|modify).*(?:\.bashrc|\.zshrc|\.profile)", re.I)),
+]
+
 # --- Obfuscation patterns (8) ---
 
 OBFUSCATION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
@@ -166,6 +222,9 @@ def scan_file(file_path: Path, relative_to: Path | None = None) -> list[dict]:
         ("sensitive_path", "high", SENSITIVE_PATH_PATTERNS),
         ("sensitive_env", "high", SENSITIVE_ENV_PATTERNS),
         ("dangerous_command", "high", DANGEROUS_COMMAND_PATTERNS),
+        ("coercive_override", "high", COERCIVE_OVERRIDE_PATTERNS),
+        ("prompt_exfiltration", "critical", PROMPT_EXFIL_PATTERNS),
+        ("stealth_persistence", "critical", STEALTH_PERSISTENCE_PATTERNS),
         ("obfuscation", "high", OBFUSCATION_PATTERNS),
     ]
 
@@ -181,6 +240,9 @@ def scan_file(file_path: Path, relative_to: Path | None = None) -> list[dict]:
         for category, base_severity, patterns in all_pattern_groups:
             for label, pattern in patterns:
                 if pattern.search(line):
+                    if category == "stealth_persistence" and _NEGATION_PREFIX.match(line):
+                        continue
+
                     if in_code_fence or is_example:
                         severity = "low"
                     else:

@@ -40,6 +40,9 @@ Evaluate the following dimensions and assign each a score from 0.0 to 1.0:
 5. **robustness** — Do the tests cover edge cases and failure modes?
 6. **specificity** — Is the instruction concrete enough that an agent knows what to do, or vague?
 7. **completeness** — Does the instruction cover everything SKILL.md claims? Any gaps?
+8. **testability** — Can the instruction's requirements be verified by the provided tests?
+9. **alignment** — Do the tests actually verify what the instruction asks for?
+10. **output_clarity** — Does the instruction specify what the output should look like?
 
 For each dimension, provide a brief finding (1-2 sentences).
 
@@ -57,7 +60,10 @@ Output ONLY valid JSON with this structure:
     "feasibility": {"score": 0.0, "finding": "..."},
     "robustness": {"score": 0.0, "finding": "..."},
     "specificity": {"score": 0.0, "finding": "..."},
-    "completeness": {"score": 0.0, "finding": "..."}
+    "completeness": {"score": 0.0, "finding": "..."},
+    "testability": {"score": 0.0, "finding": "..."},
+    "alignment": {"score": 0.0, "finding": "..."},
+    "output_clarity": {"score": 0.0, "finding": "..."}
   },
   "overall_score": 0.0,
   "recommendation": "pass|warn|fail",
@@ -80,6 +86,9 @@ Evaluate the following dimensions and assign each a score from 0.0 to 1.0:
 5. **robustness** — Do the evals cover different scenarios and edge cases?
 6. **specificity** — Are the eval prompts concrete enough, or do they rely on vague language?
 7. **completeness** — Do the evals cover all capabilities described in SKILL.md, or are some untested?
+8. **testability** — Can the eval assertions actually verify the expected behavior?
+9. **alignment** — Do the eval prompts test what SKILL.md describes?
+10. **output_clarity** — Do the evals specify expected output format?
 
 For each dimension, provide a brief finding (1-2 sentences).
 
@@ -97,7 +106,10 @@ Output ONLY valid JSON with this structure:
     "feasibility": {"score": 0.0, "finding": "..."},
     "robustness": {"score": 0.0, "finding": "..."},
     "specificity": {"score": 0.0, "finding": "..."},
-    "completeness": {"score": 0.0, "finding": "..."}
+    "completeness": {"score": 0.0, "finding": "..."},
+    "testability": {"score": 0.0, "finding": "..."},
+    "alignment": {"score": 0.0, "finding": "..."},
+    "output_clarity": {"score": 0.0, "finding": "..."}
   },
   "overall_score": 0.0,
   "recommendation": "pass|warn|fail",

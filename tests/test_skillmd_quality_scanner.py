@@ -14,9 +14,14 @@ from abevalflow.quality.skillmd_quality_scanner import (
     check_broken_references,
     check_circular_references,
     check_description_quality,
+    check_example_gap,
     check_file_completeness,
     check_generic_advice,
     check_imprecise_instructions,
+    check_negative_only,
+    check_scope_overreach,
+    check_skill_token_budget,
+    check_stale_references,
     check_unfinished_content,
     scan_directory,
 )
@@ -255,7 +260,116 @@ class TestGenericAdvice:
 
 
 # ---------------------------------------------------------------------------
-# scan_directory tests
+# Example gap tests
+# ---------------------------------------------------------------------------
+
+
+class TestExampleGap:
+    def test_many_instructions_no_examples(self, tmp_path):
+        content = (
+            "---\nname: x\ndescription: y\n---\n\n"
+            "You must always do A.\nNever do B.\n"
+            "Ensure C.\nDo not D.\nMake sure E.\n"
+        )
+        (tmp_path / "SKILL.md").write_text(content)
+        findings = check_example_gap(tmp_path / "SKILL.md")
+        assert any(f["rule_id"] == "quality-example-gap" for f in findings)
+
+    def test_instructions_with_examples_ok(self, tmp_path):
+        content = (
+            "---\nname: x\ndescription: y\n---\n\n"
+            "Always format.\nNever use tabs.\nEnsure tests.\n"
+            "Do not skip.\nMake sure works.\n\n"
+            "```python\nprint('hello')\n```\n"
+        )
+        (tmp_path / "SKILL.md").write_text(content)
+        findings = check_example_gap(tmp_path / "SKILL.md")
+        assert not any(f["rule_id"] == "quality-example-gap" for f in findings)
+
+    def test_few_instructions_ok(self, tmp_path):
+        content = "---\nname: x\ndescription: y\n---\n\nAlways format code.\n"
+        (tmp_path / "SKILL.md").write_text(content)
+        assert len(check_example_gap(tmp_path / "SKILL.md")) == 0
+
+
+# ---------------------------------------------------------------------------
+# Negative-only tests
+# ---------------------------------------------------------------------------
+
+
+class TestNegativeOnly:
+    def test_only_negatives(self, tmp_path):
+        content = "---\nname: x\ndescription: y\n---\n\nDon't use semicolons\nNever use var\nAvoid global state\n"
+        (tmp_path / "SKILL.md").write_text(content)
+        findings = check_negative_only(tmp_path / "SKILL.md")
+        assert any(f["rule_id"] == "quality-negative-only" for f in findings)
+
+    def test_negatives_with_alternatives_ok(self, tmp_path):
+        content = (
+            "---\nname: x\ndescription: y\n---\n\n"
+            "Don't use var, use const instead\n"
+            "Never use tabs, prefer spaces\n"
+            "Avoid globals, use modules instead\n"
+        )
+        (tmp_path / "SKILL.md").write_text(content)
+        assert len(check_negative_only(tmp_path / "SKILL.md")) == 0
+
+
+# ---------------------------------------------------------------------------
+# Stale references tests
+# ---------------------------------------------------------------------------
+
+
+class TestStaleReferences:
+    def test_detects_deprecated_model(self, tmp_path):
+        (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\nUse text-davinci-003 for this.")
+        assert any(f["rule_id"] == "quality-stale-reference" for f in check_stale_references(tmp_path / "SKILL.md"))
+
+    def test_detects_old_runtime(self, tmp_path):
+        (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\nRequires Python 3.7.")
+        assert any(f["rule_id"] == "quality-stale-reference" for f in check_stale_references(tmp_path / "SKILL.md"))
+
+    def test_current_tools_ok(self, tmp_path):
+        (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\nUse Python 3.12 and vite.")
+        assert len(check_stale_references(tmp_path / "SKILL.md")) == 0
+
+
+# ---------------------------------------------------------------------------
+# Scope overreach tests
+# ---------------------------------------------------------------------------
+
+
+class TestScopeOverreach:
+    def test_detects_all_tasks(self, tmp_path):
+        (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\nThis handles all tasks.")
+        assert any(f["rule_id"] == "quality-scope-overreach" for f in check_scope_overreach(tmp_path / "SKILL.md"))
+
+    def test_specific_scope_ok(self, tmp_path):
+        (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\nThis formats Python files.")
+        assert len(check_scope_overreach(tmp_path / "SKILL.md")) == 0
+
+    def test_reviews_all_code_changes_ok(self, tmp_path):
+        (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\nReviews all code changes.")
+        assert len(check_scope_overreach(tmp_path / "SKILL.md")) == 0
+
+
+# ---------------------------------------------------------------------------
+# Token budget tests
+# ---------------------------------------------------------------------------
+
+
+class TestSkillTokenBudget:
+    def test_large_skill_flagged(self, tmp_path):
+        (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\n" + "word " * 5000)
+        assert any(
+            f["rule_id"] == "quality-skill-token-budget" for f in check_skill_token_budget(tmp_path / "SKILL.md")
+        )
+
+    def test_small_skill_ok(self, tmp_path):
+        (tmp_path / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n\nA short skill.")
+        assert len(check_skill_token_budget(tmp_path / "SKILL.md")) == 0
+
+
 # ---------------------------------------------------------------------------
 # Circular references tests
 # ---------------------------------------------------------------------------

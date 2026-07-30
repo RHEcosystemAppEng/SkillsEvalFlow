@@ -344,6 +344,41 @@ def aggregate_scorecard(
             gate_result.score,
         )
 
+    # Red team gate: consume redteam-results.json if present
+    redteam_results_path = reports_dir / "redteam-results.json"
+    if redteam_results_path.exists():
+        logger.info("Processing red team gate from %s", redteam_results_path)
+        try:
+            redteam_data = json.loads(redteam_results_path.read_text())
+            results_list = redteam_data.get("results", {}).get("results", [])
+            total = len(results_list)
+            # Exclude infrastructure errors (fetch failures) from findings count
+            findings = [
+                r for r in results_list
+                if r.get("gradingResult") and not r["gradingResult"].get("pass", True)
+                and "fetch failed" not in (r["gradingResult"].get("reason") or "")
+            ]
+            num_findings = len(findings)
+            passed = num_findings == 0
+            score = 1.0 - (num_findings / max(total, 1))
+
+            redteam_gate = GateResult(
+                name="red_team",
+                gate_type=GateType.SECURITY,
+                passed=passed,
+                score=round(score, 4),
+                details=f"{num_findings} vulnerabilities found in {total} adversarial tests",
+                findings=[
+                    f"[{f.get('test', {}).get('metadata', {}).get('pluginId', 'unknown')}] "
+                    f"{(f.get('gradingResult', {}).get('reason') or '')[:100]}"
+                    for f in findings[:20]
+                ],
+            )
+            gates.append(redteam_gate)
+            logger.info("Red team: passed=%s, score=%.3f, findings=%d/%d", passed, score, num_findings, total)
+        except Exception as e:
+            logger.warning("Failed to process red team results: %s", e)
+
     recommendation, reason = apply_combination_logic(gates, policy)
     logger.info("Final recommendation: %s (%s)", recommendation, reason)
 

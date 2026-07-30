@@ -2,7 +2,7 @@ QUAY_NS ?= quay.io/rh-ee-ikrispin
 VERSION ?= 0.1
 TASKS_DIR := ../tasks/konflux
 
-TASKS = parse-snapshot deploy-agent prepare test evaluate analyze-scorecard store emit-result cleanup-agent
+TASKS = parse-snapshot prepare test evaluate analyze-scorecard store emit-result
 
 .PHONY: bundles login list clean help
 

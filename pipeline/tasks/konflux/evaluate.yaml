@@ -382,42 +382,42 @@ spec:
           oc logs $POD_NAME -n $NAMESPACE 2>&1 | tee /tmp/eval-pod-logs.txt
 
           python3 - /tmp/eval-pod-logs.txt "$REPORT_DIR" "$(results.treatment-mean-reward.path)" "$(results.control-mean-reward.path)" "$(results.recommendation.path)" <<'EXTRACT'
-          import json, re, sys
+        import json, re, sys
 
-          logs_path, report_dir, treat_path, ctrl_path, rec_path = sys.argv[1:6]
-          logs = open(logs_path).read()
+        logs_path, report_dir, treat_path, ctrl_path, rec_path = sys.argv[1:6]
+        logs = open(logs_path).read()
 
-          report_match = re.search(r'=== REPORT_JSON_START ===\n(.*?)\n=== REPORT_JSON_END ===', logs, re.DOTALL)
-          if report_match:
-              report_json = report_match.group(1).strip()
-              try:
-                  report = json.loads(report_json)
-                  with open(f"{report_dir}/report.json", "w") as f:
-                      json.dump(report, f, indent=2)
-                  print(f"Wrote report.json to {report_dir}/report.json")
+        report_match = re.search(r'=== REPORT_JSON_START ===\n(.*?)\n=== REPORT_JSON_END ===', logs, re.DOTALL)
+        if report_match:
+            report_json = report_match.group(1).strip()
+            try:
+                report = json.loads(report_json)
+                with open(f"{report_dir}/report.json", "w") as f:
+                    json.dump(report, f, indent=2)
+                print(f"Wrote report.json to {report_dir}/report.json")
 
-                  s = report.get("summary", {})
-                  t_reward = s.get("treatment", {}).get("mean_reward")
-                  recommendation = s.get("recommendation", "fail")
-                  print(f"Treatment mean reward: {t_reward}")
-                  print(f"Recommendation: {recommendation}")
+                s = report.get("summary", {})
+                t_reward = s.get("treatment", {}).get("mean_reward")
+                recommendation = s.get("recommendation", "fail")
+                print(f"Treatment mean reward: {t_reward}")
+                print(f"Recommendation: {recommendation}")
 
-                  open(treat_path, "w").write(str(t_reward if t_reward is not None else 0.0))
-                  open(ctrl_path, "w").write("0.0")
-                  open(rec_path, "w").write(recommendation)
-              except json.JSONDecodeError as e:
-                  print(f"ERROR: Failed to parse report.json: {e}")
-          else:
-              pattern = r'\{[^{}]*"mean_reward"[^{}]*\}'
-              matches = re.findall(pattern, logs)
-              if matches:
-                  summary = json.loads(matches[-1])
-                  open(treat_path, "w").write(str(summary.get("mean_reward", 0.0)))
-                  open(ctrl_path, "w").write("0.0")
-                  open(rec_path, "w").write(summary.get("recommendation", "fail"))
-              else:
-                  print("WARNING: Could not extract results from pod logs")
-          EXTRACT
+                open(treat_path, "w").write(str(t_reward if t_reward is not None else 0.0))
+                open(ctrl_path, "w").write("0.0")
+                open(rec_path, "w").write(recommendation)
+            except json.JSONDecodeError as e:
+                print(f"ERROR: Failed to parse report.json: {e}")
+        else:
+            pattern = r'\{[^{}]*"mean_reward"[^{}]*\}'
+            matches = re.findall(pattern, logs)
+            if matches:
+                summary = json.loads(matches[-1])
+                open(treat_path, "w").write(str(summary.get("mean_reward", 0.0)))
+                open(ctrl_path, "w").write("0.0")
+                open(rec_path, "w").write(summary.get("recommendation", "fail"))
+            else:
+                print("WARNING: Could not extract results from pod logs")
+        EXTRACT
 
           oc delete pod $POD_NAME -n $NAMESPACE --ignore-not-found=true
           echo "=== Remote evaluate phase complete ==="
@@ -478,20 +478,20 @@ spec:
           LLM_MODEL="openai/$(params.llm-model)"
 
           python3 - "$CONFIG_FILE" "$TASK_DIR" "$RESULTS_DIR" "$N_ATTEMPTS" "$AGENT_ENDPOINT" "$(params.agent-timeout)" "$LLM_API_BASE" "$LLM_MODEL" <<'GENCFG'
-          import sys, yaml
-          config_file, task_dir, results_dir, n_attempts, endpoint, timeout, llm_api_base, llm_model = sys.argv[1:9]
-          config = {
-              "job_name": "a2a-eval",
-              "jobs_dir": results_dir,
-              "n_attempts": int(n_attempts),
-              "agents": [{"import_path": "abevalflow.harbor_agents.a2a_adapter:A2AAgent", "kwargs": {"endpoint": endpoint, "timeout": int(timeout)}}],
-              "tasks": [{"path": task_dir}],
-              "environment": {"type": "local"},
-              "verifier": {"env": {"LLM_JUDGE_MODEL": llm_model, "LLM_API_BASE": llm_api_base, "OPENAI_API_KEY": "sk-dummy"}}
-          }
-          with open(config_file, "w") as f:
-              yaml.dump(config, f, default_flow_style=False)
-          GENCFG
+        import sys, yaml
+        config_file, task_dir, results_dir, n_attempts, endpoint, timeout, llm_api_base, llm_model = sys.argv[1:9]
+        config = {
+            "job_name": "a2a-eval",
+            "jobs_dir": results_dir,
+            "n_attempts": int(n_attempts),
+            "agents": [{"import_path": "abevalflow.harbor_agents.a2a_adapter:A2AAgent", "kwargs": {"endpoint": endpoint, "timeout": int(timeout)}}],
+            "tasks": [{"path": task_dir}],
+            "environment": {"type": "local"},
+            "verifier": {"env": {"LLM_JUDGE_MODEL": llm_model, "LLM_API_BASE": llm_api_base, "OPENAI_API_KEY": "sk-dummy"}}
+        }
+        with open(config_file, "w") as f:
+            yaml.dump(config, f, default_flow_style=False)
+        GENCFG
 
           python3 -c "from abevalflow.harbor_agents.a2a_adapter import A2AAgent; print('A2AAgent imported OK')"
 
@@ -523,22 +523,22 @@ spec:
           mcpchecker check eval.yaml --mcp-config-file mcp-config-resolved.yaml -o json > "$RESULTS_DIR/mcpchecker-out.json" 2>&1 || true
 
           python3 - "$RESULTS_DIR/mcpchecker-out.json" "$SUBMISSION_NAME" "$REPORT_DIR" "$PIPELINE_RUN_ID" <<'AGGREGATE'
-          import json, sys
-          from pathlib import Path
-          output_file, sub_name, report_dir, run_id = sys.argv[1:5]
-          try:
-              data = json.loads(Path(output_file).read_text())
-              total = data.get("total_checks", 0)
-              passed = data.get("passed_checks", 0)
-              score = passed / total if total > 0 else 0.0
-              rec = "pass" if score >= 0.7 else "fail"
-              report = {"summary": {"submission_name": sub_name, "recommendation": rec, "treatment": {"mean_reward": score, "n_trials": total}, "control": {"mean_reward": 0.0}}, "pipeline_run_id": run_id}
-              Path(report_dir).mkdir(parents=True, exist_ok=True)
-              (Path(report_dir) / "report.json").write_text(json.dumps(report, indent=2))
-              print(f"MCPChecker score: {score:.4f}, recommendation: {rec}")
-          except Exception as e:
-              print(f"WARNING: MCPChecker aggregation failed: {e}")
-          AGGREGATE
+        import json, sys
+        from pathlib import Path
+        output_file, sub_name, report_dir, run_id = sys.argv[1:5]
+        try:
+            data = json.loads(Path(output_file).read_text())
+            total = data.get("total_checks", 0)
+            passed = data.get("passed_checks", 0)
+            score = passed / total if total > 0 else 0.0
+            rec = "pass" if score >= 0.7 else "fail"
+            report = {"summary": {"submission_name": sub_name, "recommendation": rec, "treatment": {"mean_reward": score, "n_trials": total}, "control": {"mean_reward": 0.0}}, "pipeline_run_id": run_id}
+            Path(report_dir).mkdir(parents=True, exist_ok=True)
+            (Path(report_dir) / "report.json").write_text(json.dumps(report, indent=2))
+            print(f"MCPChecker score: {score:.4f}, recommendation: {rec}")
+        except Exception as e:
+            print(f"WARNING: MCPChecker aggregation failed: {e}")
+        AGGREGATE
 
           cd "$PIPELINE_DIR"
 
@@ -625,19 +625,19 @@ spec:
             N_ATTEMPTS=$(python3 -c "import yaml;m=yaml.safe_load(open('$SUBMISSION_PATH/metadata.yaml'));print(m.get('experiment',{}).get('n_trials',5))" 2>/dev/null || echo "5")
 
             python3 - "$RESULTS_DIR" "$TASK_DIR" "$N_ATTEMPTS" "$(params.llm-api-base)" "openai/$(params.llm-model)" <<'HARBORCFG'
-            import sys, yaml
-            results_dir, task_dir, n_attempts, llm_api_base, llm_model = sys.argv[1:6]
-            config = {
-                "job_name": "harbor-eval",
-                "jobs_dir": results_dir,
-                "n_attempts": int(n_attempts),
-                "tasks": [{"path": task_dir}],
-                "environment": {"type": "local"},
-                "verifier": {"env": {"LLM_JUDGE_MODEL": llm_model, "LLM_API_BASE": llm_api_base, "OPENAI_API_KEY": "sk-dummy"}}
-            }
-            with open(results_dir + "/config.yaml", "w") as f:
-                yaml.dump(config, f, default_flow_style=False)
-            HARBORCFG
+        import sys, yaml
+        results_dir, task_dir, n_attempts, llm_api_base, llm_model = sys.argv[1:6]
+        config = {
+            "job_name": "harbor-eval",
+            "jobs_dir": results_dir,
+            "n_attempts": int(n_attempts),
+            "tasks": [{"path": task_dir}],
+            "environment": {"type": "local"},
+            "verifier": {"env": {"LLM_JUDGE_MODEL": llm_model, "LLM_API_BASE": llm_api_base, "OPENAI_API_KEY": "sk-dummy"}}
+        }
+        with open(results_dir + "/config.yaml", "w") as f:
+            yaml.dump(config, f, default_flow_style=False)
+        HARBORCFG
             harbor run -c "$RESULTS_DIR/config.yaml" -y 2>&1 || true
           else
             echo "WARNING: No task.toml found, skipping Harbor eval"

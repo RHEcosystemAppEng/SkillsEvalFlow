@@ -119,7 +119,7 @@ spec:
       description: Path to evaluation results
   steps:
     - name: run-eval
-      image: registry.access.redhat.com/ubi9/python-311:9.6
+      image: registry.redhat.io/openshift4/ose-cli:latest
       env:
         - name: WORKLOAD_TOKEN
           valueFrom:
@@ -184,9 +184,6 @@ spec:
             echo "ERROR: workload-cluster-url and workload-namespace required for remote mode"
             exit 1
           fi
-
-          pip install --quiet --no-cache-dir openshift-client 2>/dev/null || true
-          microdnf install -y openshift-clients --nodocs 2>/dev/null || true
 
           # TODO: Replace --insecure-skip-tls-verify with --certificate-authority
           oc login --server="$CLUSTER_URL" --token="$WORKLOAD_TOKEN" --insecure-skip-tls-verify=true 2>/dev/null
@@ -431,6 +428,7 @@ spec:
 
         cd "$PIPELINE_DIR"
         export PYTHONPATH="$PIPELINE_DIR"
+        python3 -m ensurepip --default-pip 2>/dev/null || true
         pip install --quiet --no-cache-dir pydantic scipy pyyaml 2>&1 | tail -3
 
         SUBMISSION_PATH="$(workspaces.source.path)/submissions/$SUBMISSION_DIR"

@@ -1461,9 +1461,11 @@ spec:
           fi
           if python -c "import mlflow, pandas; print('mlflow OK', mlflow.__version__, 'pandas', pandas.__version__)"; then
             export MLFLOW_TRACKING_URI="$(params.mlflow-tracking-uri)"
+            # One MLflow experiment per PipelineRun; this AEH run is one MLflow run.
             python "$PIPELINE_DIR/scripts/log_aeh_mlflow.py" \
               --enabled true \
               --tracking-uri "$(params.mlflow-tracking-uri)" \
+              --experiment "$RUN_ID" \
               --run-id "$RUN_ID" \
               --config "$SUBMISSION_DIR/eval.yaml" \
               --runs-dir "$(workspaces.source.path)/reports" \
@@ -1747,17 +1749,25 @@ spec:
           fi
           if python -c "import mlflow, pandas; print('mlflow OK', mlflow.__version__, 'pandas', pandas.__version__)"; then
             export MLFLOW_TRACKING_URI="$(params.mlflow-tracking-uri)"
+            # One MLflow experiment per PipelineRun; control/treatment are runs under it.
             for VARIANT_RUN in "control-$RUN_ID" "treatment-$RUN_ID"; do
               CFG="$SUBMISSION_DIR/$TREATMENT_CONFIG"
               if [[ "$VARIANT_RUN" == control-* ]]; then
                 CFG="$SUBMISSION_DIR/$CONTROL_CONFIG"
               fi
+              # sync-dataset once (first variant); later variants only log + feedback.
+              ACTIONS="log-results,push-feedback,sync-dataset"
+              if [[ "$VARIANT_RUN" != control-* ]]; then
+                ACTIONS="log-results,push-feedback"
+              fi
               python "$PIPELINE_DIR/scripts/log_aeh_mlflow.py" \
                 --enabled true \
                 --tracking-uri "$(params.mlflow-tracking-uri)" \
+                --experiment "$RUN_ID" \
                 --run-id "$VARIANT_RUN" \
                 --config "$CFG" \
                 --runs-dir "$REPORTS_DIR" \
+                --actions "$ACTIONS" \
                 2>&1 || echo "Warning: MLflow logging failed for $VARIANT_RUN (non-blocking)"
             done
           else

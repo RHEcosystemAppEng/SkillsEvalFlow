@@ -173,6 +173,105 @@ def test_minimal_logger_with_mock_mlflow(tmp_path: Path, monkeypatch) -> None:
     assert ("tokens_input", 100.0) in calls["metrics"]
 
 
+def test_minimal_logger_uses_pipeline_experiment_override(tmp_path: Path, monkeypatch) -> None:
+    """--experiment forces one experiment per PipelineRun (ignores eval.yaml mlflow.experiment)."""
+    runs, config = _write_run(tmp_path)
+    calls: dict[str, list] = {"params": []}
+
+    class _FakeRun:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    class _FakeMlflow:
+        def set_tracking_uri(self, uri):
+            pass
+
+        def set_experiment(self, name):
+            calls["experiment"] = name
+
+        def start_run(self, run_name=None):
+            calls["run_name"] = run_name
+            return _FakeRun()
+
+        def log_param(self, k, v):
+            calls["params"].append((k, v))
+
+        def log_metric(self, k, v):
+            pass
+
+        def log_artifact(self, path):
+            pass
+
+    import sys
+
+    monkeypatch.setitem(sys.modules, "mlflow", _FakeMlflow())
+    monkeypatch.setattr("scripts.log_aeh_mlflow._resolve_log_results_script", lambda: None)
+    rc = main(
+        [
+            "--run-id",
+            "run-1",
+            "--config",
+            str(config),
+            "--runs-dir",
+            str(runs),
+            "--tracking-uri",
+            "http://mlflow.example:5000",
+            "--experiment",
+            "aeh-mlflow-single-abc123",
+            "--enabled",
+            "true",
+            "--actions",
+            "log-results",
+        ]
+    )
+    assert rc == 0
+    assert calls["experiment"] == "aeh-mlflow-single-abc123"
+    assert calls["run_name"] == "run-1"
+    assert ("pipeline_experiment", "aeh-mlflow-single-abc123") in calls["params"]
+
+
+def test_resolve_run_dir_discovers_when_config_skill_mismatches(tmp_path: Path) -> None:
+    """Pairwise control yaml skill often differs from the shared reports folder."""
+    from scripts.log_aeh_mlflow import _resolve_run_dir, _reports_skill_name, _write_patched_config
+
+    runs = tmp_path / "reports"
+    run_id = "control-pr-1"
+    real_skill = "aeh-hello-world-pairwise"
+    (runs / real_skill / run_id).mkdir(parents=True)
+    config_skill = "aeh-hello-world-pairwise-control"
+    found = _resolve_run_dir(runs, config_skill, run_id)
+    assert found == runs / real_skill / run_id
+    assert _reports_skill_name(runs, config_skill, run_id) == real_skill
+
+    cfg = tmp_path / "eval-control.yaml"
+    cfg.write_text(
+        yaml.safe_dump(
+            {
+                "skill": config_skill,
+                "mlflow": {"experiment": "aeh-hello-world-pairwise-control"},
+            }
+        )
+    )
+    patched = _write_patched_config(cfg, experiment="pr-1", reports_skill=real_skill)
+    try:
+        data = yaml.safe_load(patched.read_text())
+        assert data["skill"] == real_skill
+        assert data["mlflow"]["experiment"] == "pr-1"
+    finally:
+        patched.unlink(missing_ok=True)
+
+
+def test_variant_from_run_id() -> None:
+    from scripts.log_aeh_mlflow import _variant_from_run_id
+
+    assert _variant_from_run_id("control-foo") == "control"
+    assert _variant_from_run_id("treatment-foo") == "treatment"
+    assert _variant_from_run_id("foo") is None
+
+
 def test_default_schema_mapping_from_input_yaml(tmp_path: Path) -> None:
     from scripts.log_aeh_mlflow import _default_schema_mapping
 

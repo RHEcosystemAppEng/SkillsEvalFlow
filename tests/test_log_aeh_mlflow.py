@@ -102,6 +102,8 @@ def test_returns_error_when_mlflow_not_importable(tmp_path: Path, monkeypatch) -
             "http://mlflow.example:5000",
             "--enabled",
             "true",
+            "--actions",
+            "log-results",
         ]
     )
     assert rc == 1
@@ -143,6 +145,11 @@ def test_minimal_logger_with_mock_mlflow(tmp_path: Path, monkeypatch) -> None:
 
     monkeypatch.setitem(sys.modules, "mlflow", _FakeMlflow())
 
+    # Restrict to log-results so missing AEH push/sync scripts do not matter.
+    monkeypatch.setattr(
+        "scripts.log_aeh_mlflow._resolve_log_results_script",
+        lambda: None,
+    )
     rc = main(
         [
             "--run-id",
@@ -155,6 +162,8 @@ def test_minimal_logger_with_mock_mlflow(tmp_path: Path, monkeypatch) -> None:
             "http://mlflow.example:5000",
             "--enabled",
             "true",
+            "--actions",
+            "log-results",
         ]
     )
     assert rc == 0
@@ -162,3 +171,18 @@ def test_minimal_logger_with_mock_mlflow(tmp_path: Path, monkeypatch) -> None:
     assert calls["experiment"] == "aeh-demo"
     assert ("mean_reward", 0.8) in calls["metrics"]
     assert ("tokens_input", 100.0) in calls["metrics"]
+
+
+def test_default_schema_mapping_from_input_yaml(tmp_path: Path) -> None:
+    from scripts.log_aeh_mlflow import _default_schema_mapping
+
+    config = tmp_path / "eval.yaml"
+    cases = tmp_path / "cases" / "case-001"
+    cases.mkdir(parents=True)
+    (cases / "input.yaml").write_text(yaml.safe_dump({"prompt": "hello"}))
+    (cases / "reference.md").write_text("gold\n")
+    config.write_text(yaml.safe_dump({"skill": "demo", "dataset": {"path": "cases"}}))
+    mapping = _default_schema_mapping(config)
+    assert mapping is not None
+    assert mapping["inputs"]["prompt"] == "input.yaml:prompt"
+    assert mapping["expectations"]["reference"] == "reference.md:__file__"

@@ -4,13 +4,19 @@ Prefers upstream AEH ``skills/eval-mlflow/scripts/log_results.py`` when present
 (under ``/opt/agent-eval-harness`` or ``AGENT_EVAL_HARNESS_ROOT``). Falls back
 to a minimal metrics/params logger from ``run_result.json`` + ``summary.yaml``.
 
+Optional actions (same AEH skill tree):
+  - ``push-feedback`` — attach judge feedback to traces (``attach_feedback.py``)
+  - ``sync-dataset`` — sync cases to the MLflow dataset registry when a schema
+    mapping is available or a simple ``input.yaml:prompt`` default applies
+
 Usage::
 
     python scripts/log_aeh_mlflow.py \\
         --run-id <pipeline-run-id or treatment-<id>> \\
         --config /path/to/eval.yaml \\
         --runs-dir /workspace/source/reports \\
-        --tracking-uri http://mlflow.example:5000
+        --tracking-uri http://mlflow.example:5000 \\
+        [--actions log-results,push-feedback,sync-dataset]
 
 Skip (exit 0) when ``--enabled false`` or tracking URI is empty.
 """
@@ -23,25 +29,143 @@ import logging
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import yaml
 
 logger = logging.getLogger(__name__)
 
-_AEH_LOG_RESULTS_CANDIDATES = (Path("/opt/agent-eval-harness/skills/eval-mlflow/scripts/log_results.py"),)
+_AEH_MLFLOW_SCRIPTS = Path("/opt/agent-eval-harness/skills/eval-mlflow/scripts")
+_AEH_LOG_RESULTS_CANDIDATES = (_AEH_MLFLOW_SCRIPTS / "log_results.py",)
+_DEFAULT_ACTIONS = ("log-results", "push-feedback", "sync-dataset")
 
 
-def _resolve_log_results_script() -> Path | None:
+def _aeh_script(name: str) -> Path | None:
     root = os.environ.get("AGENT_EVAL_HARNESS_ROOT", "").strip()
     candidates: list[Path] = []
     if root:
-        candidates.append(Path(root) / "skills/eval-mlflow/scripts/log_results.py")
-    candidates.extend(_AEH_LOG_RESULTS_CANDIDATES)
+        candidates.append(Path(root) / "skills/eval-mlflow/scripts" / name)
+    candidates.append(_AEH_MLFLOW_SCRIPTS / name)
     for path in candidates:
         if path.is_file():
             return path
     return None
+
+
+def _resolve_log_results_script() -> Path | None:
+    return _aeh_script("log_results.py")
+
+
+def _parse_actions(raw: str) -> list[str]:
+    actions = [a.strip() for a in (raw or "").split(",") if a.strip()]
+    return actions or list(_DEFAULT_ACTIONS)
+
+
+def _default_schema_mapping(config: Path) -> dict | None:
+    """Build a minimal mapping when cases expose ``input.yaml`` with ``prompt``."""
+    try:
+        raw = yaml.safe_load(config.read_text()) or {}
+    except (OSError, yaml.YAMLError):
+        return None
+    dataset = raw.get("dataset") if isinstance(raw.get("dataset"), dict) else {}
+    rel = str(dataset.get("path") or "cases")
+    cases_dir = (config.parent / rel).resolve()
+    if not cases_dir.is_dir():
+        return None
+    for case in sorted(p for p in cases_dir.iterdir() if p.is_dir()):
+        input_yaml = case / "input.yaml"
+        if not input_yaml.is_file():
+            continue
+        try:
+            data = yaml.safe_load(input_yaml.read_text()) or {}
+        except (OSError, yaml.YAMLError):
+            continue
+        if isinstance(data, dict) and "prompt" in data:
+            mapping: dict = {"inputs": {"prompt": "input.yaml:prompt"}, "expectations": {}}
+            # Optional gold files commonly used by AEH samples
+            for name in ("reference.md", "reference.yaml"):
+                if (case / name).is_file():
+                    mapping["expectations"]["reference"] = f"{name}:__file__"
+                    break
+            return mapping
+    return None
+
+
+def _run_aeh_script(script: Path, argv: list[str], *, runs_dir: Path) -> int:
+    env = os.environ.copy()
+    env["AGENT_EVAL_RUNS_DIR"] = str(runs_dir)
+    cmd = [sys.executable, str(script), *argv]
+    logger.info("Running AEH MLflow script: %s", " ".join(cmd))
+    result = subprocess.run(cmd, env=env, check=False, capture_output=True, text=True)
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+    return result.returncode
+
+
+def _maybe_sync_dataset(*, config: Path, runs_dir: Path) -> None:
+    script = _aeh_script("sync_dataset.py")
+    if script is None:
+        logger.info("sync_dataset.py not found; skipping sync-dataset")
+        return
+
+    mapping_path = config.parent / "schema_mapping.json"
+    tmp_path: Path | None = None
+    if mapping_path.is_file():
+        logger.info("Using schema mapping: %s", mapping_path)
+    else:
+        mapping = _default_schema_mapping(config)
+        if mapping is None:
+            logger.info(
+                "No schema_mapping.json and no default input.yaml:prompt mapping; "
+                "skipping sync-dataset"
+            )
+            return
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, prefix="aeh-schema-mapping-"
+        )
+        json.dump(mapping, tmp)
+        tmp.close()
+        tmp_path = Path(tmp.name)
+        mapping_path = tmp_path
+        logger.info("Using auto-generated schema mapping for sync-dataset")
+
+    try:
+        rc = _run_aeh_script(
+            script,
+            ["--config", str(config), "--mapping", str(mapping_path)],
+            runs_dir=runs_dir,
+        )
+        if rc != 0:
+            logger.warning("sync-dataset exited %s (non-blocking)", rc)
+    finally:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+
+
+def _maybe_push_feedback(*, run_id: str, config: Path, runs_dir: Path) -> None:
+    script = _aeh_script("attach_feedback.py")
+    if script is None:
+        logger.info("attach_feedback.py not found; skipping push-feedback")
+        return
+    rc = _run_aeh_script(
+        script,
+        [
+            "--run-id",
+            run_id,
+            "--config",
+            str(config),
+            "--action",
+            "push",
+            "--source",
+            "judge",
+        ],
+        runs_dir=runs_dir,
+    )
+    if rc != 0:
+        logger.warning("push-feedback exited %s (non-blocking)", rc)
 
 
 def _mlflow_importable() -> bool:
@@ -80,6 +204,33 @@ def _run_aeh_log_results(*, script: Path, run_id: str, config: Path, runs_dir: P
         logger.warning("AEH log_results.py skipped (mlflow package missing)")
         return 2
     return result.returncode
+
+
+def _do_log_results(*, run_id: str, config: Path, runs_dir: Path, tracking_uri: str) -> int:
+    """Log results via AEH script or minimal fallback. Returns 0 on success."""
+    script = _resolve_log_results_script()
+    if script is not None:
+        rc = _run_aeh_log_results(
+            script=script,
+            run_id=run_id,
+            config=config,
+            runs_dir=runs_dir,
+        )
+        if rc == 0:
+            return 0
+        logger.warning("AEH log_results.py exited %s; trying minimal logger", rc)
+
+    try:
+        _minimal_mlflow_log(
+            run_id=run_id,
+            config=config,
+            runs_dir=runs_dir,
+            tracking_uri=tracking_uri,
+        )
+    except Exception:
+        logger.exception("MLflow logging failed")
+        return 1
+    return 0
 
 
 def _minimal_mlflow_log(*, run_id: str, config: Path, runs_dir: Path, tracking_uri: str) -> None:
@@ -164,6 +315,14 @@ def main(argv: list[str] | None = None) -> int:
         default="true",
         help="Set to false/0/no to skip (default: true when URI set by caller)",
     )
+    parser.add_argument(
+        "--actions",
+        default=",".join(_DEFAULT_ACTIONS),
+        help=(
+            "Comma-separated actions: log-results, push-feedback, sync-dataset "
+            f"(default: {','.join(_DEFAULT_ACTIONS)})"
+        ),
+    )
     args = parser.parse_args(argv)
 
     enabled = str(args.enabled).strip().lower() in {"1", "true", "yes", "on"}
@@ -188,6 +347,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
+    actions = _parse_actions(args.actions)
+    logger.info("MLflow actions: %s", ", ".join(actions))
+
     # Belt-and-suspenders: AEH log_results rejects absolute harbor_job_dir.
     try:
         from abevalflow.harbor_extensions.aeh_paths import rewrite_harbor_job_dir
@@ -202,29 +364,30 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         logger.warning("harbor_job_dir rewrite failed; continuing", exc_info=True)
 
-    script = _resolve_log_results_script()
-    if script is not None:
-        rc = _run_aeh_log_results(
-            script=script,
-            run_id=args.run_id,
-            config=config,
-            runs_dir=runs_dir,
-        )
-        if rc == 0:
-            return 0
-        logger.warning("AEH log_results.py exited %s; trying minimal logger", rc)
+    # sync-dataset is run-independent; do it first so the registry is warm.
+    if "sync-dataset" in actions:
+        try:
+            _maybe_sync_dataset(config=config, runs_dir=runs_dir)
+        except Exception:
+            logger.warning("sync-dataset failed (non-blocking)", exc_info=True)
 
-    try:
-        _minimal_mlflow_log(
+    log_rc = 0
+    if "log-results" in actions:
+        log_rc = _do_log_results(
             run_id=args.run_id,
             config=config,
             runs_dir=runs_dir,
             tracking_uri=tracking_uri,
         )
-    except Exception:
-        logger.exception("MLflow logging failed")
-        return 1
-    return 0
+
+    if "push-feedback" in actions:
+        try:
+            _maybe_push_feedback(run_id=args.run_id, config=config, runs_dir=runs_dir)
+        except Exception:
+            logger.warning("push-feedback failed (non-blocking)", exc_info=True)
+
+    # Keep historical behavior: non-zero only when log-results itself fails.
+    return log_rc
 
 
 if __name__ == "__main__":

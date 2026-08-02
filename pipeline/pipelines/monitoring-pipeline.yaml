@@ -152,6 +152,14 @@ spec:
       type: string
       default: ""
       description: MLflow tracking server URI (e.g. http://mlflow.ab-eval-flow.svc:5000)
+    - name: enable-aeh-regression-check
+      type: string
+      default: "true"
+      description: Advisory AEH score.py regression after eval (does not fail the run)
+    - name: aeh-baseline-run-id
+      type: string
+      default: ""
+      description: Optional prior AEH run-id for regression --baseline
     # Thresholds
     - name: uplift-threshold
       type: string
@@ -334,6 +342,10 @@ spec:
           value: $(params.enable-mlflow)
         - name: mlflow-tracking-uri
           value: $(params.mlflow-tracking-uri)
+        - name: enable-aeh-regression-check
+          value: $(params.enable-aeh-regression-check)
+        - name: aeh-baseline-run-id
+          value: $(params.aeh-baseline-run-id)
       workspaces:
         - name: source
           workspace: shared-workspace

@@ -15,4 +15,6 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: gp3
+  # Omit storageClassName so the cluster default applies. Uncomment/adjust
+  # for a specific class (e.g. AWS EBS gp3):
+  # storageClassName: gp3

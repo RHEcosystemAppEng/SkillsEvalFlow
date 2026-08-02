@@ -37,3 +37,17 @@ def test_rewrite_leaves_relative_path_alone(tmp_path: Path):
 
 def test_rewrite_missing_file_returns_none(tmp_path: Path):
     assert rewrite_harbor_job_dir(tmp_path / "missing.json") is None
+
+
+def test_rewrite_missing_job_dir_still_rewrites(tmp_path: Path):
+    """Archived/moved Harbor job dirs should still get a relative path."""
+    source = tmp_path / "source"
+    missing_job = source / "_eval_tmp" / "aeh-jobs" / "archived-job"
+    run_dir = source / "reports" / "skill" / "run-1"
+    run_dir.mkdir(parents=True)
+    rr = run_dir / "run_result.json"
+    rr.write_text(json.dumps({"harbor_job_dir": str(missing_job.resolve())}))
+
+    rewritten = rewrite_harbor_job_dir(rr)
+    assert rewritten == "_eval_tmp/aeh-jobs/archived-job"
+    assert json.loads(rr.read_text())["harbor_job_dir"] == rewritten

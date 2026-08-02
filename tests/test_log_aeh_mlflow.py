@@ -188,6 +188,35 @@ def test_default_schema_mapping_from_input_yaml(tmp_path: Path) -> None:
     assert mapping["expectations"]["reference"] == "reference.md:__file__"
 
 
+def test_upstream_noop_missing_mlflow_markers() -> None:
+    from scripts.log_aeh_mlflow import _upstream_noop_missing_mlflow
+
+    assert _upstream_noop_missing_mlflow("MLflow not installed\n", 0) is True
+    assert _upstream_noop_missing_mlflow("No module named 'mlflow'\n", 1) is True
+    assert _upstream_noop_missing_mlflow("Logged 3 runs\n", 0) is False
+
+
+def test_run_aeh_log_results_detects_missing_mlflow_noop(tmp_path: Path, monkeypatch) -> None:
+    from scripts import log_aeh_mlflow as mod
+
+    script = tmp_path / "log_results.py"
+    script.write_text("# stub\n")
+
+    class _Result:
+        returncode = 0
+        stdout = "MLflow not installed — skipping\n"
+        stderr = ""
+
+    monkeypatch.setattr(mod.subprocess, "run", lambda *a, **k: _Result())
+    rc = mod._run_aeh_log_results(
+        script=script,
+        run_id="run-1",
+        config=tmp_path / "eval.yaml",
+        runs_dir=tmp_path / "reports",
+    )
+    assert rc == 2
+
+
 def test_resolve_run_dir_prefers_exact_then_pairwise_prefixes(tmp_path: Path) -> None:
     from scripts.log_aeh_mlflow import _resolve_run_dir
 

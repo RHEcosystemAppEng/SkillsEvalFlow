@@ -53,10 +53,11 @@ spec:
       description: Submission's skip_quality_review setting from metadata.yaml
     - name: enable-aeh-eval-check
       type: string
-      default: "true"
+      default: "false"
       description: >-
         When true and eval-engine=aeh, run AEH harness inventory (advisory —
-        does not fail the test phase).
+        does not fail the test phase). Defaults off to avoid an extra AEH
+        image pull in the test phase; set true to opt in.
     - name: aeh-image
       type: string
       default: "quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3"

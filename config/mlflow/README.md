@@ -19,6 +19,10 @@ http://abevalflow-mlflow.ab-eval-flow.svc.cluster.local:5000
 
 Set pipeline params `enable-mlflow=true` and `mlflow-tracking-uri` to that URL.
 
+Client packages (`mlflow-skinny`, `pandas`) are baked into
+`containers/agent-eval-harness/Containerfile`. Evaluate still pip-installs to
+`/tmp` only when those imports are missing (older images).
+
 ## Security defaults
 
 - `--allowed-hosts` lists in-cluster Service DNS + localhost only (no `*`).
@@ -28,5 +32,6 @@ Set pipeline params `enable-mlflow=true` and `mlflow-tracking-uri` to that URL.
 
 ## Storage
 
-`pvc.yaml` sets `storageClassName: gp3` (AWS). On other clusters, edit or omit
-the field so the cluster default StorageClass applies.
+`pvc.yaml` omits `storageClassName` so the cluster default applies. Uncomment
+`storageClassName: gp3` (or your class) in that file if you need a specific
+provisioner.

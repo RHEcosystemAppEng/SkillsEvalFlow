@@ -187,8 +187,10 @@ spec:
       description: Optional prior AEH run-id for regression --baseline
     - name: enable-aeh-eval-check
       type: string
-      default: "true"
-      description: Advisory AEH harness inventory in test phase (does not fail the run)
+      default: "false"
+      description: >-
+        Advisory AEH harness inventory in test phase (does not fail the run).
+        Defaults off to avoid an extra AEH image pull; set true to opt in.
     # Security scanning
     - name: security-scan
       type: string

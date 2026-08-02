@@ -74,13 +74,17 @@ COPY --chown=1001:0 abevalflow /opt/agent-eval-harness/abevalflow
 # - Anthropic SDK with Vertex AI support
 # - Jinja2 for template rendering
 # - SciPy for statistical functions
+# - mlflow-skinny + pandas for post-evaluate AEH MLflow logging (evaluate.yaml
+#   still pip-installs to /tmp as a fallback when these imports are missing)
 RUN pip install --no-cache-dir \
     "harbor>=0.13.0" \
     "kubernetes>=32.0.0" \
     pyyaml \
     "anthropic[vertex]" \
     jinja2 \
-    scipy
+    scipy \
+    "mlflow-skinny" \
+    pandas
 
 # Set up environment
 ENV PYTHONPATH=/opt/agent-eval-harness \

@@ -16,6 +16,14 @@ def rewrite_harbor_job_dir(run_result_path: Path) -> str | None:
     resolves relative ones against ancestors of the run directory. Harbor
     ``run.py`` currently stores an absolute job dir, which skips trace build.
 
+    **Side effect:** mutates ``run_result.json`` in place (overwrites
+    ``harbor_job_dir``). Downstream consumers that need the original absolute
+    Harbor path should read it before calling this helper.
+
+    When the job directory is missing (moved/archived), still attempt a
+    relative rewrite from the absolute path string so MLflow traces can be
+    salvaged.
+
     Returns the rewritten relative path, or None if unchanged / not possible.
     """
     path = Path(run_result_path)
@@ -37,11 +45,13 @@ def rewrite_harbor_job_dir(run_result_path: Path) -> str | None:
     if not job.is_absolute():
         return None
     if not job.is_dir():
-        logger.warning("harbor_job_dir does not exist: %s", job)
-        return None
+        logger.warning(
+            "harbor_job_dir does not exist (%s); attempting relative rewrite anyway",
+            job,
+        )
 
     run_dir = path.parent.resolve()
-    job_resolved = job.resolve()
+    job_resolved = job.resolve() if job.exists() else job
     for root in run_dir.parents:
         try:
             rel = job_resolved.relative_to(root)

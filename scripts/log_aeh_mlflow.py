@@ -1,8 +1,11 @@
 """Log AEH Harbor run results to MLflow (post-evaluate, non-blocking caller).
 
-Prefers upstream AEH ``skills/eval-mlflow/scripts/log_results.py`` when present
-(under ``/opt/agent-eval-harness`` or ``AGENT_EVAL_HARNESS_ROOT``). Falls back
-to a minimal metrics/params logger from ``run_result.json`` + ``summary.yaml``.
+Requires an importable ``mlflow`` package in the current Python environment
+(Tekton evaluate installs ``mlflow-skinny`` + ``pandas`` into ``/tmp`` when
+missing). Prefers upstream AEH ``skills/eval-mlflow/scripts/log_results.py``
+when present (under ``/opt/agent-eval-harness`` or ``AGENT_EVAL_HARNESS_ROOT``).
+Falls back to a minimal metrics/params logger from ``run_result.json`` +
+``summary.yaml`` when upstream is absent or no-ops.
 
 Optional actions (same AEH skill tree):
   - ``push-feedback`` — attach judge feedback to traces (``attach_feedback.py``)
@@ -37,8 +40,14 @@ import yaml
 logger = logging.getLogger(__name__)
 
 _AEH_MLFLOW_SCRIPTS = Path("/opt/agent-eval-harness/skills/eval-mlflow/scripts")
-_AEH_LOG_RESULTS_CANDIDATES = (_AEH_MLFLOW_SCRIPTS / "log_results.py",)
 _DEFAULT_ACTIONS = ("log-results", "push-feedback", "sync-dataset")
+# Upstream log_results.py wording varies; also catch ImportError-style lines.
+_MISSING_MLFLOW_MARKERS = (
+    "MLflow not installed",
+    "mlflow is not installed",
+    "No module named 'mlflow'",
+    'No module named "mlflow"',
+)
 
 
 def _aeh_script(name: str) -> Path | None:
@@ -171,12 +180,22 @@ def _mlflow_importable() -> bool:
     return True
 
 
+def _upstream_noop_missing_mlflow(combined: str, returncode: int) -> bool:
+    """True when upstream log_results likely skipped because mlflow is missing."""
+    if any(marker in combined for marker in _MISSING_MLFLOW_MARKERS):
+        return True
+    # Structural guard: success exit but this interpreter cannot import mlflow.
+    if returncode == 0 and not _mlflow_importable():
+        return True
+    return False
+
+
 def _run_aeh_log_results(*, script: Path, run_id: str, config: Path, runs_dir: Path) -> int:
     """Run upstream log_results.py.
 
     Returns 0 on real success. Returns non-zero when the script no-ops because
-    ``mlflow`` is missing (upstream exits 0 with a message — treat as failure
-    so we can fall back to the minimal logger).
+    ``mlflow`` is missing (upstream often exits 0 with a message — treat as
+    failure so we can fall back to the minimal logger).
     """
     env = os.environ.copy()
     env["AGENT_EVAL_RUNS_DIR"] = str(runs_dir)
@@ -195,7 +214,7 @@ def _run_aeh_log_results(*, script: Path, run_id: str, config: Path, runs_dir: P
     if result.stderr:
         print(result.stderr, end="", file=sys.stderr)
     combined = f"{result.stdout}\n{result.stderr}"
-    if "MLflow not installed" in combined:
+    if _upstream_noop_missing_mlflow(combined, result.returncode):
         logger.warning("AEH log_results.py skipped (mlflow package missing)")
         return 2
     return result.returncode

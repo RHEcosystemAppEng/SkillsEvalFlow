@@ -235,7 +235,7 @@ def test_minimal_logger_uses_pipeline_experiment_override(tmp_path: Path, monkey
 
 def test_resolve_run_dir_discovers_when_config_skill_mismatches(tmp_path: Path) -> None:
     """Pairwise control yaml skill often differs from the shared reports folder."""
-    from scripts.log_aeh_mlflow import _resolve_run_dir, _reports_skill_name, _write_patched_config
+    from scripts.log_aeh_mlflow import _reports_skill_name, _resolve_run_dir, _write_patched_config
 
     runs = tmp_path / "reports"
     run_id = "control-pr-1"

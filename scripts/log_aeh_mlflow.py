@@ -180,14 +180,15 @@ def _mlflow_importable() -> bool:
     return True
 
 
-def _upstream_noop_missing_mlflow(combined: str, returncode: int) -> bool:
-    """True when upstream log_results likely skipped because mlflow is missing."""
-    if any(marker in combined for marker in _MISSING_MLFLOW_MARKERS):
-        return True
-    # Structural guard: success exit but this interpreter cannot import mlflow.
-    if returncode == 0 and not _mlflow_importable():
-        return True
-    return False
+def _upstream_noop_missing_mlflow(combined: str) -> bool:
+    """True when upstream log_results output indicates mlflow was missing.
+
+    Relies on known upstream / ImportError message markers only. A structural
+    ``returncode == 0 and not importable`` guard is intentionally avoided: it
+    false-positives in test envs (and any interpreter) where mlflow is absent
+    but output is a real success string such as ``Logged N runs``.
+    """
+    return any(marker in combined for marker in _MISSING_MLFLOW_MARKERS)
 
 
 def _run_aeh_log_results(*, script: Path, run_id: str, config: Path, runs_dir: Path) -> int:
@@ -214,7 +215,7 @@ def _run_aeh_log_results(*, script: Path, run_id: str, config: Path, runs_dir: P
     if result.stderr:
         print(result.stderr, end="", file=sys.stderr)
     combined = f"{result.stdout}\n{result.stderr}"
-    if _upstream_noop_missing_mlflow(combined, result.returncode):
+    if _upstream_noop_missing_mlflow(combined):
         logger.warning("AEH log_results.py skipped (mlflow package missing)")
         return 2
     return result.returncode

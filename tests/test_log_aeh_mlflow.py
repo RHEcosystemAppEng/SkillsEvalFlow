@@ -191,9 +191,9 @@ def test_default_schema_mapping_from_input_yaml(tmp_path: Path) -> None:
 def test_upstream_noop_missing_mlflow_markers() -> None:
     from scripts.log_aeh_mlflow import _upstream_noop_missing_mlflow
 
-    assert _upstream_noop_missing_mlflow("MLflow not installed\n", 0) is True
-    assert _upstream_noop_missing_mlflow("No module named 'mlflow'\n", 1) is True
-    assert _upstream_noop_missing_mlflow("Logged 3 runs\n", 0) is False
+    assert _upstream_noop_missing_mlflow("MLflow not installed\n") is True
+    assert _upstream_noop_missing_mlflow("No module named 'mlflow'\n") is True
+    assert _upstream_noop_missing_mlflow("Logged 3 runs\n") is False
 
 
 def test_run_aeh_log_results_detects_missing_mlflow_noop(tmp_path: Path, monkeypatch) -> None:

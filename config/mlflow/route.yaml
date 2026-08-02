@@ -1,9 +1,9 @@
-# Optional external UI / API access for guy-ziv-evalflow MLflow.
+# Optional external UI / API access for the shared-namespace MLflow.
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: abevalflow-mlflow
-  namespace: guy-ziv-evalflow
+  namespace: ab-eval-flow
   labels:
     app.kubernetes.io/part-of: abevalflow
     app.kubernetes.io/name: mlflow

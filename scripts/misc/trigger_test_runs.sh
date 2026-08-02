@@ -13,7 +13,7 @@ set -euo pipefail
 #                legacy   — original 6 Harbor/A2A/ASE runs only
 #
 # Env overrides:
-#   NAMESPACE          OpenShift namespace (default: guy-ziv-evalflow)
+#   NAMESPACE          OpenShift namespace (default: ab-eval-flow)
 #   PIPELINE_CI        CI pipeline name (default: abevalflow-pipeline-dev)
 #   PIPELINE_MONITOR   Monitoring pipeline name (default: abevalflow-monitoring-pipeline-dev)
 #   LLM_API_BASE       LiteLLM base URL
@@ -21,6 +21,7 @@ set -euo pipefail
 #   SKILL_REPO         skill-submissions git URL
 #   ENABLE_MLFLOW      true/false (default false)
 #   MLFLOW_TRACKING_URI  MLflow server URI when ENABLE_MLFLOW=true
+#                        (default: in-cluster abevalflow-mlflow Service)
 #
 # Verified AEH samples (skill-submissions):
 #   single:   revision=eval/aeh-hello-world-single   submission-dir=aeh-hello-world-single
@@ -32,7 +33,7 @@ if [[ -z "$BRANCH" ]]; then
 fi
 MODE="${2:-all}"
 
-NAMESPACE="${NAMESPACE:-guy-ziv-evalflow}"
+NAMESPACE="${NAMESPACE:-ab-eval-flow}"
 PIPELINE_CI="${PIPELINE_CI:-abevalflow-pipeline-dev}"
 PIPELINE_MONITOR="${PIPELINE_MONITOR:-abevalflow-monitoring-pipeline-dev}"
 LLM_API_BASE="${LLM_API_BASE:-http://litellm.ab-eval-flow.svc.cluster.local:4000}"
@@ -40,8 +41,8 @@ AEH_IMAGE="${AEH_IMAGE:-quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3}"
 SKILL_REPO="${SKILL_REPO:-https://github.com/RHEcosystemAppEng/skill-submissions.git}"
 LLM_MODEL="${LLM_MODEL:-claude-sonnet}"
 ENABLE_MLFLOW="${ENABLE_MLFLOW:-false}"
-# Dedicated ABEvalFlow MLflow in guy-ziv-evalflow (see config/mlflow/).
-MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-http://abevalflow-mlflow.guy-ziv-evalflow.svc.cluster.local:5000}"
+# In-cluster Service from config/mlflow/ (override for a personal namespace).
+MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-http://abevalflow-mlflow.ab-eval-flow.svc.cluster.local:5000}"
 
 echo "pipeline-repo-revision: $BRANCH"
 echo "namespace:              $NAMESPACE"

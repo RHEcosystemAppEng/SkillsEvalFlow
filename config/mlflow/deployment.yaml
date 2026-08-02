@@ -1,10 +1,11 @@
 # Lightweight dedicated MLflow tracking server for ABEvalFlow AEH runs.
 # Backend: sqlite on PVC. Artifacts: same PVC under /mlflow/artifacts.
+# Cluster DNS: http://abevalflow-mlflow.ab-eval-flow.svc.cluster.local:5000
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: abevalflow-mlflow
-  namespace: guy-ziv-evalflow
+  namespace: ab-eval-flow
   labels:
     app.kubernetes.io/part-of: abevalflow
     app.kubernetes.io/name: mlflow

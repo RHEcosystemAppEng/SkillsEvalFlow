@@ -118,14 +118,9 @@ def _maybe_sync_dataset(*, config: Path, runs_dir: Path) -> None:
     else:
         mapping = _default_schema_mapping(config)
         if mapping is None:
-            logger.info(
-                "No schema_mapping.json and no default input.yaml:prompt mapping; "
-                "skipping sync-dataset"
-            )
+            logger.info("No schema_mapping.json and no default input.yaml:prompt mapping; skipping sync-dataset")
             return
-        tmp = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, prefix="aeh-schema-mapping-"
-        )
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, prefix="aeh-schema-mapping-")
         json.dump(mapping, tmp)
         tmp.close()
         tmp_path = Path(tmp.name)
@@ -233,6 +228,23 @@ def _do_log_results(*, run_id: str, config: Path, runs_dir: Path, tracking_uri: 
     return 0
 
 
+def _resolve_run_dir(runs_dir: Path, skill: str, run_id: str) -> Path:
+    """Locate ``runs_dir/<skill>/<run_id>``, with pairwise prefix fallbacks.
+
+    Pairwise AEH layouts use ``control-<id>`` / ``treatment-<id>``. When callers
+    pass a bare pipeline-run id, prefer the treatment dir, then control.
+    """
+    candidates = [runs_dir / skill / run_id]
+    if not run_id.startswith(("control-", "treatment-")):
+        candidates.append(runs_dir / skill / f"treatment-{run_id}")
+        candidates.append(runs_dir / skill / f"control-{run_id}")
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    tried = ", ".join(str(c) for c in candidates)
+    raise FileNotFoundError(f"AEH run dir not found for skill={skill!r} run_id={run_id!r}; tried: {tried}")
+
+
 def _minimal_mlflow_log(*, run_id: str, config: Path, runs_dir: Path, tracking_uri: str) -> None:
     try:
         import mlflow
@@ -244,13 +256,7 @@ def _minimal_mlflow_log(*, run_id: str, config: Path, runs_dir: Path, tracking_u
     mlflow_cfg = raw.get("mlflow") if isinstance(raw.get("mlflow"), dict) else {}
     experiment = str(mlflow_cfg.get("experiment") or skill or "abevalflow-aeh")
 
-    run_dir = runs_dir / skill / run_id
-    if not run_dir.is_dir():
-        # Pairwise control/treatment dirs use control-<id> / treatment-<id>
-        # when --run-id already includes the prefix.
-        run_dir = runs_dir / skill / run_id
-        if not run_dir.is_dir():
-            raise FileNotFoundError(f"AEH run dir not found: {run_dir}")
+    run_dir = _resolve_run_dir(runs_dir, skill, run_id)
 
     run_result: dict = {}
     rr_path = run_dir / "run_result.json"
@@ -319,8 +325,7 @@ def main(argv: list[str] | None = None) -> int:
         "--actions",
         default=",".join(_DEFAULT_ACTIONS),
         help=(
-            "Comma-separated actions: log-results, push-feedback, sync-dataset "
-            f"(default: {','.join(_DEFAULT_ACTIONS)})"
+            f"Comma-separated actions: log-results, push-feedback, sync-dataset (default: {','.join(_DEFAULT_ACTIONS)})"
         ),
     )
     args = parser.parse_args(argv)

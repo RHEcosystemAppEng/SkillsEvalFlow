@@ -216,7 +216,8 @@ def test_enrich_patches_models_and_injects_weighted_reward(tmp_path: Path):
     }
 
 
-def test_enrich_adds_score_range_to_weighted_reward_without_one(tmp_path: Path):
+def test_enrich_preserves_submission_reward_without_score_range(tmp_path: Path):
+    """Likert submissions may omit score_range (AEH default [1,5]); do not force [0,1]."""
     submission = tmp_path / "submission"
     (submission / "cases" / "case-001").mkdir(parents=True)
     (submission / "eval.yaml").write_text(
@@ -252,7 +253,11 @@ def test_enrich_adds_score_range_to_weighted_reward_without_one(tmp_path: Path):
 
     enrich_harbor_tasks(tasks, config_path=submission / "eval.yaml")
     bundled = yaml.safe_load((task / "tests" / "eval.yaml").read_text())
-    assert bundled["reward"]["score_range"] == [0, 1]
+    assert "score_range" not in bundled["reward"]
+    assert bundled["reward"]["weights"] == {
+        "correctness": 1.0,
+        "helpfulness": 1.0,
+    }
 
 
 def test_enrich_preserves_explicit_reward_section(tmp_path: Path):

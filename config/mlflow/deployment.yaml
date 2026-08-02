@@ -42,11 +42,13 @@ spec:
               # A filesystem default-artifact-root makes remote clients try to
               # mkdir /mlflow locally (PermissionError under OpenShift SCC).
               # Single uvicorn worker: default multi-worker forks OOM under small limits.
+              # Host allowlist: in-cluster Service DNS + localhost only.
+              # Do not use '*'. If you expose a Route, append its hostname here
+              # (see README.md). CORS is omitted — pipeline clients are not browsers.
               exec mlflow server \
                 --host 0.0.0.0 \
                 --port 5000 \
-                --allowed-hosts '*' \
-                --cors-allowed-origins '*' \
+                --allowed-hosts 'abevalflow-mlflow,abevalflow-mlflow.ab-eval-flow,abevalflow-mlflow.ab-eval-flow.svc,abevalflow-mlflow.ab-eval-flow.svc.cluster.local,localhost,127.0.0.1' \
                 --backend-store-uri sqlite:////mlflow/mlflow.db \
                 --default-artifact-root mlflow-artifacts:/ \
                 --artifacts-destination /mlflow/artifacts \

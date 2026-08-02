@@ -29,9 +29,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_SCORE_CANDIDATES = (
-    Path("/opt/agent-eval-harness/skills/eval-run/scripts/score.py"),
-)
+_SCORE_CANDIDATES = (Path("/opt/agent-eval-harness/skills/eval-run/scripts/score.py"),)
 
 
 def _resolve_score_script() -> Path | None:
@@ -88,9 +86,7 @@ def main(argv: list[str] | None = None) -> int:
 
     script = _resolve_score_script()
     if script is None:
-        logger.warning(
-            "AEH score.py not found (set AGENT_EVAL_HARNESS_ROOT or use AEH image); skipping"
-        )
+        logger.warning("AEH score.py not found (set AGENT_EVAL_HARNESS_ROOT or use AEH image); skipping")
         return 0
 
     env = os.environ.copy()

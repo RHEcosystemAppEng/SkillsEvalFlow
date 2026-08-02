@@ -1,4 +1,15 @@
-# Optional external UI / API access for the shared-namespace MLflow.
+# OPTIONAL — do not apply by default.
+#
+# Exposes abevalflow-mlflow outside the cluster. The Deployment host allowlist
+# is in-cluster only; if you apply this Route you MUST append the Route
+# hostname to --allowed-hosts in deployment.yaml.
+#
+# Intended for eval/dev UI access only — not production telemetry. Prefer
+# ClusterIP + in-cluster MLFLOW_TRACKING_URI for PipelineRuns:
+#   http://abevalflow-mlflow.ab-eval-flow.svc.cluster.local:5000
+#
+# Apply explicitly when needed:
+#   oc apply -f config/mlflow/route.yaml
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -7,6 +18,8 @@ metadata:
   labels:
     app.kubernetes.io/part-of: abevalflow
     app.kubernetes.io/name: mlflow
+  annotations:
+    abevalflow.io/exposure: "optional-dev-only"
 spec:
   to:
     kind: Service

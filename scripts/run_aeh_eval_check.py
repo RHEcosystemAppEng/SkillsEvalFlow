@@ -23,9 +23,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_INVENTORY_CANDIDATES = (
-    Path("/opt/agent-eval-harness/skills/eval-check/scripts/harness_inventory.py"),
-)
+_INVENTORY_CANDIDATES = (Path("/opt/agent-eval-harness/skills/eval-check/scripts/harness_inventory.py"),)
 
 
 def _resolve_inventory_script() -> Path | None:
@@ -79,10 +77,7 @@ def main(argv: list[str] | None = None) -> int:
 
     script = _resolve_inventory_script()
     if script is None:
-        logger.warning(
-            "AEH harness_inventory.py not found "
-            "(set AGENT_EVAL_HARNESS_ROOT or use AEH image); skipping"
-        )
+        logger.warning("AEH harness_inventory.py not found (set AGENT_EVAL_HARNESS_ROOT or use AEH image); skipping")
         return 0
 
     cmd = [sys.executable, str(script), "--root", str(root), "--format", "yaml"]

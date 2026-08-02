@@ -112,11 +112,7 @@ def _reward_to_inject(raw: dict) -> dict | None:
     judges = raw.get("judges") or []
     if not isinstance(judges, list):
         return None
-    names = [
-        str(j["name"])
-        for j in judges
-        if isinstance(j, dict) and j.get("name")
-    ]
+    names = [str(j["name"]) for j in judges if isinstance(j, dict) and j.get("name")]
     if not names:
         return None
     return {
@@ -185,16 +181,11 @@ def _enrich_one_task(
                 models["skill"] = skill_model
             if judge_model:
                 models["judge"] = judge_model
-        if reward_inject is not None and not (
-            isinstance(cfg.get("reward"), dict) and cfg["reward"]
-        ):
+        if reward_inject is not None and not (isinstance(cfg.get("reward"), dict) and cfg["reward"]):
+            # Only ABEvalFlow-injected rewards get score_range [0, 1]. Do not
+            # rewrite submission-authored weighted rewards that omit score_range
+            # (AEH default [1, 5] may be intentional for Likert judges).
             cfg["reward"] = reward_inject
-        # Harden existing reward blocks that omit score_range (AEH default [1,5]
-        # collapses [0,1] judge scores of 1.0 to reward 0.0).
-        reward = cfg.get("reward")
-        if isinstance(reward, dict) and reward.get("formula") == "weighted":
-            if "score_range" not in reward and "raw" not in reward:
-                reward["score_range"] = [0, 1]
         bundled.write_text(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True))
 
     # 3) Stage annotations in test.sh before reward runs

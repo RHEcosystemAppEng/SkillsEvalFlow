@@ -186,3 +186,29 @@ def test_default_schema_mapping_from_input_yaml(tmp_path: Path) -> None:
     assert mapping is not None
     assert mapping["inputs"]["prompt"] == "input.yaml:prompt"
     assert mapping["expectations"]["reference"] == "reference.md:__file__"
+
+
+def test_resolve_run_dir_prefers_exact_then_pairwise_prefixes(tmp_path: Path) -> None:
+    from scripts.log_aeh_mlflow import _resolve_run_dir
+
+    skill = "demo-skill"
+    runs = tmp_path / "reports"
+    exact = runs / skill / "run-1"
+    exact.mkdir(parents=True)
+    assert _resolve_run_dir(runs, skill, "run-1") == exact
+
+    bare_id = "pipe-abc"
+    treatment = runs / skill / f"treatment-{bare_id}"
+    treatment.mkdir(parents=True)
+    assert _resolve_run_dir(runs, skill, bare_id) == treatment
+
+    control_only = "pipe-ctrl"
+    control = runs / skill / f"control-{control_only}"
+    control.mkdir(parents=True)
+    assert _resolve_run_dir(runs, skill, control_only) == control
+
+    try:
+        _resolve_run_dir(runs, skill, "missing-run")
+        raise AssertionError("expected FileNotFoundError")
+    except FileNotFoundError as exc:
+        assert "missing-run" in str(exc)

@@ -29,11 +29,7 @@ def test_writes_report_and_stays_advisory(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "submission"
     root.mkdir()
     fake = tmp_path / "harness_inventory.py"
-    fake.write_text(
-        "import sys\n"
-        "print('skills: 1')\n"
-        "sys.exit(1)\n"
-    )
+    fake.write_text("import sys\nprint('skills: 1')\nsys.exit(1)\n")
     monkeypatch.setattr(
         "scripts.run_aeh_eval_check._resolve_inventory_script",
         lambda: fake,

@@ -432,7 +432,13 @@ def store(
 
         observers = discover_observers()
         if observers:
-            notify_observers(observers, result, ev_run.id)
+            notify_observers(
+                observers,
+                result,
+                ev_run.id,
+                report_dir=report_dir,
+                pipeline_run_id=effective_run_id,
+            )
 
     return True
 

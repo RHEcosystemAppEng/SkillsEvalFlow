@@ -290,6 +290,77 @@ class TestAEHPairwiseValidation:
         assert errors == []
 
 
+class TestAEHPluginDirsValidation:
+    """runner.plugin_dirs must exist and contain SKILL.md."""
+
+    def test_missing_plugin_dir(self, tmp_path):
+        eval_yaml = {
+            **VALID_EVAL_YAML,
+            "skill": "my-aeh-eval",
+            "runner": {"plugin_dirs": ["skills"]},
+        }
+        create_aeh_submission(tmp_path, eval_yaml_content=eval_yaml)
+        errors = validate_submission(tmp_path, eval_engine=EvalEngine.AEH)
+        assert any("plugin_dirs entry 'skills/' is missing" in e for e in errors)
+
+    def test_plugin_dir_without_skill_md(self, tmp_path):
+        eval_yaml = {
+            **VALID_EVAL_YAML,
+            "skill": "my-aeh-eval",
+            "runner": {"plugin_dirs": ["skills"]},
+        }
+        create_aeh_submission(tmp_path, eval_yaml_content=eval_yaml)
+        (tmp_path / "skills").mkdir()
+        errors = validate_submission(tmp_path, eval_engine=EvalEngine.AEH)
+        assert any("must contain SKILL.md" in e for e in errors)
+
+    def test_nested_skill_md_passes(self, tmp_path):
+        eval_yaml = {
+            **VALID_EVAL_YAML,
+            "skill": "my-aeh-eval",
+            "runner": {"plugin_dirs": ["skills"]},
+        }
+        create_aeh_submission(tmp_path, eval_yaml_content=eval_yaml)
+        skill_dir = tmp_path / "skills" / "my-aeh-eval"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# skill\n")
+        errors = validate_submission(tmp_path, eval_engine=EvalEngine.AEH)
+        assert errors == []
+
+
+class TestAEHToolInterceptionValidation:
+    """inputs.tools / permissions / tool_handlers.yaml checks."""
+
+    def test_tools_require_match_and_handlers_file(self, tmp_path):
+        eval_yaml = {
+            **VALID_EVAL_YAML,
+            "inputs": {"tools": [{"prompt": "deny mcp"}]},  # missing match
+        }
+        create_aeh_submission(tmp_path, eval_yaml_content=eval_yaml)
+        errors = validate_submission(tmp_path, eval_engine=EvalEngine.AEH)
+        assert any("requires a non-empty 'match'" in e for e in errors)
+        assert any("tool_handlers.yaml is missing" in e for e in errors)
+
+    def test_tools_with_handlers_passes(self, tmp_path):
+        eval_yaml = {
+            **VALID_EVAL_YAML,
+            "inputs": {"tools": [{"match": "Block MCP", "prompt": "deny"}]},
+            "permissions": {"deny": ["mcp__*"]},
+        }
+        create_aeh_submission(tmp_path, eval_yaml_content=eval_yaml)
+        (tmp_path / "tool_handlers.yaml").write_text(
+            yaml.dump({"handlers": [{"patterns": ["mcp__*"], "action": "deny"}]})
+        )
+        errors = validate_submission(tmp_path, eval_engine=EvalEngine.AEH)
+        assert errors == []
+
+    def test_invalid_permissions_type(self, tmp_path):
+        eval_yaml = {**VALID_EVAL_YAML, "permissions": ["mcp__*"]}
+        create_aeh_submission(tmp_path, eval_yaml_content=eval_yaml)
+        errors = validate_submission(tmp_path, eval_engine=EvalEngine.AEH)
+        assert any("'permissions' must be a mapping" in e for e in errors)
+
+
 class TestAEHEvalEngineEnum:
     """Tests for AEH in EvalEngine enum."""
 

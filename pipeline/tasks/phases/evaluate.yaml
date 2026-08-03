@@ -159,6 +159,26 @@ spec:
       type: string
       default: "harbor"
       description: AEH execution backend (harbor, vanilla)
+    - name: enable-mlflow
+      type: string
+      default: "false"
+      description: When true and mlflow-tracking-uri is set, log AEH results to MLflow
+    - name: mlflow-tracking-uri
+      type: string
+      default: ""
+      description: MLflow tracking server URI
+    - name: enable-aeh-regression-check
+      type: string
+      default: "true"
+      description: >-
+        When true, run AEH score.py regression after eval (advisory — does not
+        fail the step). Requires thresholds: in eval.yaml.
+    - name: aeh-baseline-run-id
+      type: string
+      default: ""
+      description: >-
+        Optional prior AEH run-id for score.py regression --baseline (relative
+        drift). Empty skips the baseline comparison.
   workspaces:
     - name: source
       description: Workspace containing the cloned submissions repository
@@ -1256,8 +1276,10 @@ spec:
           memory: "512Mi"
         limits:
           cpu: "1000m"
-          memory: "1Gi"
+          memory: "2Gi"
       env:
+        - name: HOME
+          value: /tmp
         - name: AGENT_EVAL_K8S_NAMESPACE
           valueFrom:
             fieldRef:
@@ -1319,11 +1341,16 @@ spec:
         if isinstance(models, str):
             print(models)
         else:
-            print(models.get('skill', 'claude-sonnet-4-5'))
+            print(models.get('skill', 'claude-sonnet'))
         ")
         fi
         
         JUDGE_OVERRIDE="$(params.aeh-judge-model-override)"
+        # Default judges to the resolved skill model so LiteLLM aliases stay aligned
+        # (eval.yaml may still name a model the proxy does not expose).
+        if [ -z "$JUDGE_OVERRIDE" ] && [ -n "$MODEL" ]; then
+          JUDGE_OVERRIDE="$MODEL"
+        fi
         
         echo "Submission: $SUBMISSION_DIR"
         echo "Output: $OUT_DIR"
@@ -1409,6 +1436,66 @@ spec:
         print(f"Recommendation: {rec}")
         PARSE_AEH
 
+        # Optional MLflow logging (non-blocking).
+        # Prefer packages baked into the AEH image; if missing, install to /tmp
+        # (image site-packages is read-only under OpenShift SCC).
+        if [ "$(params.enable-mlflow)" = "true" ] && [ -n "$(params.mlflow-tracking-uri)" ]; then
+          echo "=== AEH MLflow logging ==="
+          MLFLOW_PKG_DIR="/tmp/mlflow-pkgs"
+          mkdir -p "$MLFLOW_PKG_DIR"
+          export PYTHONPATH="${MLFLOW_PKG_DIR}${PYTHONPATH:+:$PYTHONPATH}"
+          # pandas is required by AEH log_results.py (mlflow.log_table).
+          if python -c "import mlflow, pandas" 2>/dev/null; then
+            echo "mlflow/pandas already available (image or prior install); skipping pip"
+          else
+            echo "Installing mlflow-skinny + pandas into ${MLFLOW_PKG_DIR} (fallback) ..."
+            # Do not let pip failure abort the step (set -e / pipefail).
+            set +e
+            python -m pip install --no-cache-dir --target "$MLFLOW_PKG_DIR" 'mlflow-skinny' 'pandas' 2>&1 | tee /tmp/mlflow-pip.log | tail -30
+            PIP_RC=${PIPESTATUS[0]}
+            set -e
+            if [ "$PIP_RC" -ne 0 ]; then
+              echo "WARN: mlflow-skinny/pandas install failed (rc=$PIP_RC)"
+              tail -40 /tmp/mlflow-pip.log || true
+            fi
+          fi
+          if python -c "import mlflow, pandas; print('mlflow OK', mlflow.__version__, 'pandas', pandas.__version__)"; then
+            export MLFLOW_TRACKING_URI="$(params.mlflow-tracking-uri)"
+            # One MLflow experiment per PipelineRun; this AEH run is one MLflow run.
+            python "$PIPELINE_DIR/scripts/log_aeh_mlflow.py" \
+              --enabled true \
+              --tracking-uri "$(params.mlflow-tracking-uri)" \
+              --experiment "$RUN_ID" \
+              --run-id "$RUN_ID" \
+              --config "$SUBMISSION_DIR/eval.yaml" \
+              --runs-dir "$(workspaces.source.path)/reports" \
+              2>&1 || echo "Warning: MLflow logging failed (non-blocking)"
+          else
+            echo "Warning: mlflow/pandas not importable; skipping MLflow logging"
+          fi
+        else
+          echo "Skipping AEH MLflow (enable-mlflow=$(params.enable-mlflow), uri set=$([ -n "$(params.mlflow-tracking-uri)" ] && echo yes || echo no))"
+        fi
+
+        # Advisory AEH threshold / baseline regression (never fails this step).
+        if [ "$(params.enable-aeh-regression-check)" = "true" ]; then
+          echo "=== AEH regression check (advisory) ==="
+          BASELINE_ARGS=()
+          if [ -n "$(params.aeh-baseline-run-id)" ]; then
+            BASELINE_ARGS=(--baseline "$(params.aeh-baseline-run-id)")
+          fi
+          python "$PIPELINE_DIR/scripts/run_aeh_regression.py" \
+            --enabled true \
+            --run-id "$RUN_ID" \
+            --config "$SUBMISSION_DIR/eval.yaml" \
+            --runs-dir "$(workspaces.source.path)/reports" \
+            --output "$(workspaces.source.path)/reports/${SUBMISSION_NAME}/aeh-regression.txt" \
+            "${BASELINE_ARGS[@]}" \
+            2>&1 || echo "Warning: AEH regression check failed to run (non-blocking)"
+        else
+          echo "Skipping AEH regression check (enable-aeh-regression-check=$(params.enable-aeh-regression-check))"
+        fi
+
         if [ "$AEH_EXIT" -ne 0 ]; then
           echo "ERROR: AEH single evaluation exited $AEH_EXIT (report written if outputs existed)"
           exit "$AEH_EXIT"
@@ -1430,8 +1517,10 @@ spec:
           memory: "512Mi"
         limits:
           cpu: "1000m"
-          memory: "1Gi"
+          memory: "2Gi"
       env:
+        - name: HOME
+          value: /tmp
         - name: AGENT_EVAL_K8S_NAMESPACE
           valueFrom:
             fieldRef:
@@ -1448,7 +1537,7 @@ spec:
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
-        
+
         EVAL_ENGINE="$(params.eval-engine)"
         AEH_MODE="$(params.aeh-mode)"
         if [ "$EVAL_ENGINE" != "aeh" ] || [ "$AEH_MODE" != "pairwise" ]; then
@@ -1477,11 +1566,14 @@ spec:
         if isinstance(models, str):
             print(models)
         else:
-            print(models.get('skill', 'claude-sonnet-4-5'))
+            print(models.get('skill', 'claude-sonnet'))
         ")
         fi
         
         JUDGE_OVERRIDE="$(params.aeh-judge-model-override)"
+        if [ -z "$JUDGE_OVERRIDE" ] && [ -n "$MODEL" ]; then
+          JUDGE_OVERRIDE="$MODEL"
+        fi
         AEH_IMAGE="$(params.aeh-image)"
         AEH_RUNNER="$(params.aeh-runner)"
         
@@ -1493,6 +1585,7 @@ spec:
         echo "Control config: $CONTROL_CONFIG"
         echo "Treatment config: $TREATMENT_CONFIG"
         echo "Model: $MODEL"
+        echo "Judge override: ${JUDGE_OVERRIDE:-none}"
         echo "Runner: $AEH_RUNNER"
 
         # Add pipeline dir to PYTHONPATH so abevalflow module is importable
@@ -1632,6 +1725,76 @@ spec:
         print(f"  Treatment win rate: {win_rate:.2%} (threshold={threshold})")
         print(f"  Recommendation: {rec}")
         PARSE_PAIRWISE
+
+        # Optional MLflow logging for control + treatment (non-blocking).
+        # Prefer packages baked into the AEH image; if missing, install to /tmp.
+        if [ "$(params.enable-mlflow)" = "true" ] && [ -n "$(params.mlflow-tracking-uri)" ]; then
+          echo "=== AEH MLflow logging (pairwise) ==="
+          MLFLOW_PKG_DIR="/tmp/mlflow-pkgs"
+          mkdir -p "$MLFLOW_PKG_DIR"
+          export PYTHONPATH="${MLFLOW_PKG_DIR}${PYTHONPATH:+:$PYTHONPATH}"
+          # pandas is required by AEH log_results.py (mlflow.log_table).
+          if python -c "import mlflow, pandas" 2>/dev/null; then
+            echo "mlflow/pandas already available (image or prior install); skipping pip"
+          else
+            echo "Installing mlflow-skinny + pandas into ${MLFLOW_PKG_DIR} (fallback) ..."
+            set +e
+            python -m pip install --no-cache-dir --target "$MLFLOW_PKG_DIR" 'mlflow-skinny' 'pandas' 2>&1 | tee /tmp/mlflow-pip.log | tail -30
+            PIP_RC=${PIPESTATUS[0]}
+            set -e
+            if [ "$PIP_RC" -ne 0 ]; then
+              echo "WARN: mlflow-skinny/pandas install failed (rc=$PIP_RC)"
+              tail -40 /tmp/mlflow-pip.log || true
+            fi
+          fi
+          if python -c "import mlflow, pandas; print('mlflow OK', mlflow.__version__, 'pandas', pandas.__version__)"; then
+            export MLFLOW_TRACKING_URI="$(params.mlflow-tracking-uri)"
+            # One MLflow experiment per PipelineRun; control/treatment are runs under it.
+            for VARIANT_RUN in "control-$RUN_ID" "treatment-$RUN_ID"; do
+              CFG="$SUBMISSION_DIR/$TREATMENT_CONFIG"
+              if [[ "$VARIANT_RUN" == control-* ]]; then
+                CFG="$SUBMISSION_DIR/$CONTROL_CONFIG"
+              fi
+              # sync-dataset once (first variant); later variants only log + feedback.
+              ACTIONS="log-results,push-feedback,sync-dataset"
+              if [[ "$VARIANT_RUN" != control-* ]]; then
+                ACTIONS="log-results,push-feedback"
+              fi
+              python "$PIPELINE_DIR/scripts/log_aeh_mlflow.py" \
+                --enabled true \
+                --tracking-uri "$(params.mlflow-tracking-uri)" \
+                --experiment "$RUN_ID" \
+                --run-id "$VARIANT_RUN" \
+                --config "$CFG" \
+                --runs-dir "$REPORTS_DIR" \
+                --actions "$ACTIONS" \
+                2>&1 || echo "Warning: MLflow logging failed for $VARIANT_RUN (non-blocking)"
+            done
+          else
+            echo "Warning: mlflow/pandas not importable; skipping MLflow logging"
+          fi
+        else
+          echo "Skipping AEH MLflow (enable-mlflow=$(params.enable-mlflow))"
+        fi
+
+        # Advisory AEH threshold / baseline regression on treatment run.
+        if [ "$(params.enable-aeh-regression-check)" = "true" ]; then
+          echo "=== AEH regression check (advisory, pairwise treatment) ==="
+          BASELINE_ARGS=()
+          if [ -n "$(params.aeh-baseline-run-id)" ]; then
+            BASELINE_ARGS=(--baseline "$(params.aeh-baseline-run-id)")
+          fi
+          python "$PIPELINE_DIR/scripts/run_aeh_regression.py" \
+            --enabled true \
+            --run-id "treatment-$RUN_ID" \
+            --config "$SUBMISSION_DIR/$TREATMENT_CONFIG" \
+            --runs-dir "$REPORTS_DIR" \
+            --output "$REPORTS_DIR/${SUBMISSION_NAME}/aeh-regression.txt" \
+            "${BASELINE_ARGS[@]}" \
+            2>&1 || echo "Warning: AEH regression check failed to run (non-blocking)"
+        else
+          echo "Skipping AEH regression check (enable-aeh-regression-check=$(params.enable-aeh-regression-check))"
+        fi
 
         if [ "$PAIRWISE_EXIT" -ne 0 ]; then
           echo "ERROR: pairwise evaluation exited $PAIRWISE_EXIT (report written if outputs existed)"

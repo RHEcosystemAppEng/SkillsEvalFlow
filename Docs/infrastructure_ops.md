@@ -109,6 +109,31 @@ curl http://localhost:4000/health
 
 Adjust sizes based on expected submission volume and image sizes.
 
+## MLflow (optional AEH observability)
+
+Opt-in post-evaluate logging for AEH runs. Defaults: `enable-mlflow=false`,
+empty `mlflow-tracking-uri`. See `config/mlflow/README.md` for security notes
+(in-cluster hosts only; Route is optional/dev-only; SQLite is not HA).
+
+```bash
+# Deploy tracking server (PVC uses cluster default StorageClass)
+oc apply -f config/mlflow/pvc.yaml
+oc apply -f config/mlflow/service.yaml
+oc apply -f config/mlflow/deployment.yaml
+
+# Pipeline params (example)
+#   enable-mlflow: "true"
+#   mlflow-tracking-uri: http://abevalflow-mlflow.ab-eval-flow.svc.cluster.local:5000
+```
+
+Do **not** apply `config/mlflow/route.yaml` unless you also append the Route
+hostname to `--allowed-hosts` in `deployment.yaml`.
+
+The AEH runner image (`containers/agent-eval-harness/Containerfile`) bakes
+`mlflow-skinny` + `pandas`. The evaluate step still pip-installs to `/tmp` only
+when those imports are missing (older images). Rebuild/push the AEH image after
+changing that Containerfile.
+
 ## Cleanup CronJob
 
 Runs daily at 03:00 UTC. Configurable via environment variables:

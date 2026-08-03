@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Agentic Eval Flow — AI Artifact Evaluation Pipeline</title>
+  <link rel="icon" type="image/png" href="assets/images/agentic_eval_flow_logo.png" />
+  <link rel="apple-touch-icon" href="assets/images/agentic_eval_flow_logo.png" />
   <style>
     :root {
       --accent: #ee0000;
@@ -13,104 +15,124 @@
       --warm-deep: #ff5a1f;
       --bg: #0f1115;
       --fg: #f0f2f5;
-      --muted: #9aa3b2;
+      --muted: #a8b0bf;
       --border: #2a303c;
       --code-bg: #1a1f29;
       --section-bg: #151922;
       --surface: #1a1f29;
       --cta-secondary: #2a303c;
       --cta-secondary-hover: #3a4252;
-      --glow-a: rgba(238, 0, 0, 0.32);
-      --glow-b: rgba(255, 106, 61, 0.18);
+      --header-h: 4.25rem;
     }
     color-scheme: dark;
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.6; position: relative; }
-    /* Subtle colorful wash behind the header/hero (red spectrum) */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.65;
+      font-size: 17px;
+      position: relative;
+    }
+    /* Red → black wash from top to bottom (no side-switching) */
     body::before {
       content: "";
       position: fixed;
       inset: 0;
       pointer-events: none;
       z-index: 0;
-      background:
-        radial-gradient(60% 100% at 50% -10%, var(--glow-a), transparent 70%),
-        radial-gradient(40% 80% at 85% 0%, var(--glow-b), transparent 70%),
-        radial-gradient(35% 60% at 10% 5%, rgba(255, 80, 80, 0.12), transparent 65%);
+      background: linear-gradient(
+        180deg,
+        rgba(190, 0, 0, 0.42) 0%,
+        rgba(120, 0, 0, 0.22) 18%,
+        rgba(40, 8, 8, 0.12) 42%,
+        rgba(15, 17, 21, 0.04) 68%,
+        transparent 100%
+      );
     }
-    header, .hero, section, footer { position: relative; z-index: 1; }
+    .hero, section, footer { position: relative; z-index: 1; }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
-    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.92em; }
     header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
       border-bottom: 1px solid var(--border);
-      padding: 1rem 2rem;
+      padding: 0.85rem 2rem;
+      min-height: var(--header-h);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: rgba(15, 17, 21, 0.72);
-      backdrop-filter: blur(10px);
+      gap: 1rem;
+      background: rgba(15, 17, 21, 0.92);
+      backdrop-filter: blur(12px);
     }
     .brand {
       display: inline-flex;
       align-items: center;
       gap: 0.65rem;
       text-decoration: none;
+      flex-shrink: 0;
     }
     .brand:hover { text-decoration: none; }
     .brand__logo {
       display: block;
-      width: 2.1rem;
-      height: 2.1rem;
+      width: 2.35rem;
+      height: 2.35rem;
       border-radius: 0.4rem;
       object-fit: cover;
     }
     header h1 {
-      font-size: 1.3rem;
+      font-size: 1.4rem;
       font-weight: 700;
-      background: linear-gradient(100deg, #ff8a8a 0%, #ee0000 45%, #ff7a3d 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
+      color: #fff;
     }
-    header nav a { margin-left: 1.5rem; color: var(--muted); font-size: 0.9rem; }
+    header nav {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.15rem 0;
+    }
+    header nav a { margin-left: 1.25rem; color: var(--muted); font-size: 1rem; }
     header nav a:hover { color: var(--fg); }
-    .hero { text-align: center; padding: 5rem 2rem 4rem; }
+    .hero { text-align: center; padding: 4.5rem 2rem 4rem; }
     .hero-logo {
       display: block;
-      width: 7.5rem;
-      height: 7.5rem;
+      width: 8.5rem;
+      height: 8.5rem;
       margin: 0 auto 1.5rem;
       border-radius: 1.1rem;
       object-fit: cover;
       box-shadow: 0 12px 40px rgba(238, 0, 0, 0.18);
     }
-    .hero h2 { font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem; letter-spacing: -0.02em; }
+    .hero h2 { font-size: 2.75rem; font-weight: 700; margin-bottom: 1rem; letter-spacing: -0.02em; }
     .hero h2 .grad {
-      background: linear-gradient(100deg, #ff9b9b 0%, #ee0000 40%, #ff6a3d 75%, #ffb347 100%);
+      background: linear-gradient(180deg, #ff8a8a 0%, #ee0000 55%, #8a0000 100%);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
     }
-    .hero > p:not(.made-at) { font-size: 1.2rem; color: var(--muted); max-width: 700px; margin: 0 auto 2rem; }
+    .hero > p:not(.made-at) { font-size: 1.3rem; color: var(--muted); max-width: 760px; margin: 0 auto 2rem; }
     .badges { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem; }
-    .badge { display: inline-block; background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; color: var(--muted); }
-    .cta { display: inline-block; background: var(--accent); color: #fff; padding: 0.7rem 2rem; border-radius: 6px; font-weight: 600; font-size: 1rem; margin: 0 0.5rem; }
+    .badge { display: inline-block; background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 5px 12px; font-size: 0.9rem; color: var(--muted); }
+    .cta { display: inline-block; background: var(--accent); color: #fff; padding: 0.8rem 2.1rem; border-radius: 6px; font-weight: 600; font-size: 1.1rem; margin: 0 0.5rem; }
     .cta:hover { background: var(--accent-hover); text-decoration: none; }
     .cta-secondary { background: var(--cta-secondary); color: var(--fg); }
     .cta-secondary:hover { background: var(--cta-secondary-hover); }
-    section { padding: 4rem 2rem; max-width: 1000px; margin: 0 auto; }
+    section { padding: 4.25rem 2rem; max-width: 1120px; margin: 0 auto; }
     section.alt { background: var(--section-bg); max-width: 100%; }
-    section.alt > div { max-width: 1000px; margin: 0 auto; }
-    section h3 { font-size: 1.6rem; margin-bottom: 1.5rem; }
-    section h4 { font-size: 1.1rem; margin-bottom: 0.5rem; }
-    section p { color: var(--muted); margin-bottom: 1rem; }
+    section.alt > div { max-width: 1120px; margin: 0 auto; }
+    section h3 { font-size: 1.85rem; margin-bottom: 1.5rem; }
+    section h4 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+    section p { color: var(--muted); margin-bottom: 1rem; font-size: 1.05rem; }
     .flow-lead { max-width: 720px; }
     .flow-kicker {
       display: inline-block;
       margin-bottom: 0.75rem;
       color: var(--accent);
-      font-size: 0.75rem;
+      font-size: 0.85rem;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -130,36 +152,35 @@
     }
     .flow-stage {
       position: relative;
-      text-align: left;
-      padding: 1rem 0.85rem;
+      text-align: center;
+      padding: 1.1rem 0.85rem;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 8px;
-      min-height: 132px;
-    }
-    .flow-stage--analyze {
-      border-color: rgba(238, 0, 0, 0.55);
-      box-shadow: inset 0 0 0 1px rgba(238, 0, 0, 0.12);
+      min-height: 148px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     .flow-stage__num {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 22px;
-      height: 22px;
-      margin-bottom: 0.45rem;
+      width: 26px;
+      height: 26px;
+      margin-bottom: 0.5rem;
       border-radius: 50%;
       background: var(--accent);
       color: #fff;
-      font-size: 0.75rem;
+      font-size: 0.85rem;
       font-weight: 700;
     }
     .flow-stage h4 {
-      font-size: 0.95rem;
-      margin-bottom: 0.35rem;
+      font-size: 1.05rem;
+      margin-bottom: 0.4rem;
     }
     .flow-stage p {
-      font-size: 0.78rem;
+      font-size: 0.88rem;
       margin: 0;
       color: var(--muted);
       line-height: 1.45;
@@ -167,6 +188,7 @@
     .flow-stage__tags {
       display: flex;
       flex-wrap: wrap;
+      justify-content: center;
       gap: 0.3rem;
       margin-top: 0.7rem;
     }
@@ -177,7 +199,7 @@
       border-radius: 999px;
       background: var(--code-bg);
       color: var(--muted);
-      font-size: 0.68rem;
+      font-size: 0.78rem;
       font-weight: 600;
       letter-spacing: 0.02em;
     }
@@ -189,19 +211,20 @@
       margin-top: 1.25rem;
       padding-top: 1.25rem;
       border-top: 1px dashed var(--border);
+      text-align: center;
     }
     .flow-merge__label {
-      margin-bottom: 0.45rem;
+      margin: 0 auto 0.45rem;
       color: var(--muted);
-      font-size: 0.78rem;
+      font-size: 0.9rem;
       font-weight: 600;
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
     .flow-merge__help {
-      margin: 0 0 0.95rem;
+      margin: 0 auto 0.95rem;
       color: var(--muted);
-      font-size: 0.88rem;
+      font-size: 1rem;
       line-height: 1.45;
       max-width: 720px;
     }
@@ -213,22 +236,23 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 0.6rem;
       position: relative;
+      text-align: center;
     }
     .flow-gate {
       padding: 0.85rem 0.75rem;
       background: var(--bg);
       border: 1px solid var(--border);
-      border-left: 3px solid var(--accent);
-      border-radius: 0 8px 8px 0;
+      border-top: 3px solid var(--accent);
+      border-radius: 8px;
     }
     .flow-gate h5 {
-      font-size: 0.85rem;
+      font-size: 0.95rem;
       font-weight: 700;
       margin-bottom: 0.3rem;
       color: var(--fg);
     }
     .flow-gate p {
-      font-size: 0.75rem;
+      font-size: 0.85rem;
       margin: 0;
       color: var(--muted);
       line-height: 1.4;
@@ -250,32 +274,20 @@
     }
     .flow-outcome {
       margin-top: 0.75rem;
-      padding: 0.9rem 1rem;
+      padding: 0.95rem 1rem;
       border: 1px solid rgba(238, 0, 0, 0.35);
       border-radius: 8px;
       background: rgba(238, 0, 0, 0.06);
       text-align: center;
-    }
-    .flow-outcome strong { color: var(--fg); }
-    .flow-outcome span { color: var(--muted); font-size: 0.85rem; }
-    .cert-level {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      white-space: nowrap;
-    }
-    .cert-shield {
-      display: inline-block;
-      width: 0.95em;
-      height: 0.95em;
-      vertical-align: -0.1em;
-      color: var(--accent);
-      flex-shrink: 0;
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 700;
     }
     .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+    .features--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .card { border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; background: var(--surface); }
-    .card h4 { margin-bottom: 0.5rem; }
-    .card p { font-size: 0.9rem; margin: 0; }
+    .card h4 { margin-bottom: 0.5rem; font-size: 1.15rem; }
+    .card p { font-size: 1rem; margin: 0; }
     .card-title {
       display: flex;
       align-items: center;
@@ -296,6 +308,17 @@
       margin-bottom: 1.5rem;
     }
     .section-heading h3 { margin: 0; }
+    .section--center { text-align: center; }
+    .section--center .section-heading { justify-content: center; }
+    .section--center .features { justify-items: stretch; }
+    .section--center .card {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .section--center .card-title { justify-content: center; }
+    .section--center .card p { max-width: 28rem; }
     .section-heading__icon {
       display: block;
       width: 1.45rem;
@@ -368,29 +391,52 @@
     }
     .gs-shared h4 {
       margin: 0 0 0.45rem;
-      font-size: 1rem;
+      font-size: 1.15rem;
     }
-    .gs-shared p { margin: 0 0 0.75rem; font-size: 0.9rem; }
-    .gs-shared pre {
+    .gs-shared p { margin: 0 0 0.75rem; font-size: 1.02rem; }
+    .code-block {
+      position: relative;
+      margin: 0 0 0.25rem;
+    }
+    .code-block pre {
       background: var(--code-bg);
-      padding: 0.85rem 0.9rem;
+      padding: 0.95rem 2.75rem 0.95rem 0.95rem;
       border-radius: 6px;
       overflow-x: auto;
       margin: 0;
       border: 1px solid var(--border);
     }
-    .gs-shared code {
+    .code-block code {
       background: transparent;
       padding: 0;
-      font-size: 0.8rem;
+      font-size: 0.9rem;
       color: var(--muted);
       white-space: pre;
     }
+    .copy-btn {
+      position: absolute;
+      top: 0.55rem;
+      right: 0.55rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+    }
+    .copy-btn:hover { color: var(--fg); border-color: var(--accent); }
+    .copy-btn svg { width: 1rem; height: 1rem; }
+    .copy-btn.is-copied { color: #7dffa0; border-color: #3a7a4a; }
     @media (max-width: 800px) {
       .gs-flows { grid-template-columns: 1fr; }
     }
     table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
-    th, td { padding: 0.7rem 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    th, td { padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 1.02rem; }
     th { font-weight: 600; background: var(--code-bg); color: var(--fg); }
     td { color: var(--muted); }
     td strong { color: var(--fg); }
@@ -398,7 +444,7 @@
     .gate { border-left: 4px solid var(--accent); padding: 1rem; background: var(--code-bg); border-radius: 0 6px 6px 0; }
     .gate h4 { font-size: 0.95rem; margin-bottom: 0.3rem; }
     .gate p { font-size: 0.85rem; margin: 0; }
-    footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
+    footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; color: var(--muted); font-size: 0.95rem; }
     footer a { color: var(--muted); }
     footer a:hover { color: var(--fg); }
     pre { border: 1px solid var(--border); }
@@ -411,7 +457,7 @@
       margin: 3.5rem auto 0;
       padding-top: 0;
       color: var(--muted);
-      font-size: 0.81rem;
+      font-size: 0.9rem;
       font-weight: 600;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -424,25 +470,31 @@
     }
     .made-at__redhat {
       display: block;
-      height: 1.68rem;
+      height: 1.88rem;
       width: auto;
     }
     .made-at__name {
-      font-size: 0.87rem;
+      font-size: 0.98rem;
       font-weight: 650;
       letter-spacing: 0.04em;
       text-transform: none;
       color: var(--fg);
     }
+    @media (max-width: 1100px) {
+      .features--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
     @media (max-width: 900px) {
       .flow-spine,
       .flow-gates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      header { flex-wrap: wrap; }
     }
     @media (max-width: 700px) {
-      .hero h2 { font-size: 1.8rem; }
+      .hero h2 { font-size: 2rem; }
       .flow-spine,
-      .flow-gates { grid-template-columns: 1fr; }
+      .flow-gates,
+      .features--4 { grid-template-columns: 1fr; }
       .flow { padding: 1rem; }
+      header nav a { margin-left: 0.85rem; font-size: 0.95rem; }
     }
   </style>
 </head>
@@ -528,12 +580,12 @@
           <span class="flow-tag">Behavioral</span>
         </div>
       </article>
-      <article class="flow-stage flow-stage--analyze">
+      <article class="flow-stage">
         <div class="flow-stage__num">4</div>
         <h4>Analyze</h4>
         <p>Gates merge here into scorecard + certification</p>
         <div class="flow-stage__tags">
-          <span class="flow-tag flow-tag--accent">Scorecard</span>
+          <span class="flow-tag">Scorecard</span>
         </div>
       </article>
       <article class="flow-stage">
@@ -570,15 +622,7 @@
         <span class="flow-arrow__line"></span>
       </div>
       <div class="flow-outcome">
-        <strong>One recommendation</strong>
-        <span> — Foundational → Trusted →
-          <span class="cert-level"><strong>Certified</strong>
-            <svg class="cert-shield" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path fill="currentColor" d="M12 2 4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm0 18.2c-3.53-1.05-6.2-4.58-6.2-8.11V6.3l6.2-2.32 6.2 2.32v5.79c0 3.53-2.67 7.06-6.2 8.11z"/>
-              <path fill="currentColor" d="M10.5 11.5 9 13l3 3 5-5-1.5-1.5L12 13l-1.5-1.5z" opacity=".95"/>
-            </svg>
-          </span>
-        </span>
+        One recommendation — Foundational → Trusted → Certified
       </div>
     </div>
   </div>
@@ -650,7 +694,7 @@
       </svg>
     </div>
     <p>Every pipeline run is tracked end-to-end — from gate scores to LLM token usage.</p>
-    <div class="features">
+    <div class="features features--4">
       <div class="card"><h4>Normalized Database</h4><p>PostgreSQL tables: scorecards, gate results, certifications, and observability metrics. Query evaluation history with simple SQL.</p></div>
       <div class="card"><h4>Token & Cost Tracking</h4><p>Real LLM token counts captured per pipeline run. Track prompt/completion tokens, model usage, and estimated costs.</p></div>
       <div class="card"><h4>MLflow Integration</h4><p>Auto-logs experiments, metrics, tags, and artifacts. One experiment per submission, run comparison out of the box.</p></div>
@@ -671,7 +715,7 @@
     </svg>
   </div>
   <p>Each variant runs <strong>N configurable repetitions</strong> (default 20 per arm — treatment + control). Stats are computed across those trials so noisy single runs don’t decide the gate.</p>
-  <div class="features">
+  <div class="features features--4">
     <div class="card"><h4>N repetitions</h4><p>Configurable via <code>n-trials</code> / metadata. Same task is executed N times per variant to estimate pass rate and mean reward with real variance.</p></div>
     <div class="card"><h4>Welch's t-test</h4><p>Compares mean reward between arms when sample sizes or variances differ — stronger than a single-run delta, especially when N is modest.</p></div>
     <div class="card"><h4>Fisher's Exact Test</h4><p>Tests whether pass/fail counts differ significantly between treatment and control (good fit for binary outcomes at typical N).</p></div>
@@ -732,9 +776,17 @@
     <div class="gs-shared">
       <h4>Push &amp; trigger</h4>
       <p><strong>Skill evaluation</strong> — commit or open a PR on the submissions repo. GitHub / GitLab webhooks start the CI pipeline (security + quality gates included). Use <code>aeh-mode: single</code> or <code>pairwise</code> for A-only vs A/B.</p>
-      <pre><code>git clone https://github.com/RHEcosystemAppEng/skill-submissions.git
+      <div class="code-block">
+        <button type="button" class="copy-btn" aria-label="Copy command" title="Copy">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+        <pre><code>git clone https://github.com/RHEcosystemAppEng/skill-submissions.git
 cp -r my-skill-eval submissions/
 git add submissions/my-skill-eval && git commit -m "Submit skill eval" && git push</code></pre>
+      </div>
       <p style="margin-top: 1rem;"><strong>Agent evaluation</strong> — two trigger styles (configurable):</p>
       <ul class="gs-steps" style="list-style: disc;">
         <li><strong>Git PR / push</strong> — submission package with cases + <code>eval.yaml</code> (full CI path when configured)</li>
@@ -744,7 +796,7 @@ git add submissions/my-skill-eval && git commit -m "Submit skill eval" && git pu
   </div>
 </section>
 
-<section>
+<section class="section--center">
   <div class="section-heading">
     <h3>Where Results Live</h3>
     <svg class="section-heading__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -781,6 +833,27 @@ git add submissions/my-skill-eval && git commit -m "Submit skill eval" && git pu
 <footer>
   <p>Agentic Eval Flow &mdash; <a href="https://github.com/RHEcosystemAppEng/ABEvalFlow">GitHub</a> &mdash; Apache-2.0 License &mdash; Red Hat Ecosystem App Engineering</p>
 </footer>
+
+<script>
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var block = btn.closest('.code-block');
+      var code = block && block.querySelector('code');
+      if (!code) return;
+      try {
+        await navigator.clipboard.writeText(code.textContent);
+        btn.classList.add('is-copied');
+        btn.setAttribute('aria-label', 'Copied');
+        setTimeout(function () {
+          btn.classList.remove('is-copied');
+          btn.setAttribute('aria-label', 'Copy command');
+        }, 1600);
+      } catch (e) {
+        /* ignore clipboard failures */
+      }
+    });
+  });
+</script>
 
 </body>
 </html>

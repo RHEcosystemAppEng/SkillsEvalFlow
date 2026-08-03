@@ -34,6 +34,7 @@ class MLflowObserver:
         report_dir: Path | None = None,
         pipeline_run_id: str | None = None,
     ) -> None:
+
         mlflow.set_tracking_uri(self.tracking_uri)
 
         experiment_name = f"{self.experiment_prefix}/{result.submission_name}"
@@ -112,6 +113,7 @@ def _count_gates(result: AnalysisResult, passed: bool) -> int:
 
 def _log_scorecard_metrics(report_dir: Path) -> None:
     """Log gate scores and certification from scorecard.json if present."""
+
     scorecard_path = report_dir / "scorecard.json"
     if not scorecard_path.is_file():
         return
@@ -145,6 +147,7 @@ def _log_scorecard_metrics(report_dir: Path) -> None:
 
 def _log_observability_metrics(report_dir: Path) -> None:
     """Log token usage from metrics checkpoint if present."""
+
     checkpoint_path = report_dir / "_metrics_checkpoint.json"
     if not checkpoint_path.is_file():
         return

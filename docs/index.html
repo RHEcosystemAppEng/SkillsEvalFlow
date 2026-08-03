@@ -3,75 +3,461 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ABEvalFlow — AI Artifact Evaluation Pipeline</title>
+  <title>Agentic Eval Flow — AI Artifact Evaluation Pipeline</title>
   <style>
     :root {
-      --accent: #e00;
-      --bg: #fff;
-      --fg: #1a1a1a;
-      --muted: #666;
-      --border: #e5e5e5;
-      --code-bg: #f5f5f5;
-      --section-bg: #fafafa;
+      --accent: #ee0000;
+      --accent-hover: #c90000;
+      --accent-soft: #ff6b6b;
+      --warm: #ff8a4c;
+      --warm-deep: #ff5a1f;
+      --bg: #0f1115;
+      --fg: #f0f2f5;
+      --muted: #9aa3b2;
+      --border: #2a303c;
+      --code-bg: #1a1f29;
+      --section-bg: #151922;
+      --surface: #1a1f29;
+      --cta-secondary: #2a303c;
+      --cta-secondary-hover: #3a4252;
+      --glow-a: rgba(238, 0, 0, 0.32);
+      --glow-b: rgba(255, 106, 61, 0.18);
     }
+    color-scheme: dark;
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: var(--fg); line-height: 1.6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.6; position: relative; }
+    /* Subtle colorful wash behind the header/hero (red spectrum) */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(60% 100% at 50% -10%, var(--glow-a), transparent 70%),
+        radial-gradient(40% 80% at 85% 0%, var(--glow-b), transparent 70%),
+        radial-gradient(35% 60% at 10% 5%, rgba(255, 80, 80, 0.12), transparent 65%);
+    }
+    header, .hero, section, footer { position: relative; z-index: 1; }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
     code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-    header { border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
-    header h1 { font-size: 1.3rem; font-weight: 700; }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 17, 21, 0.72);
+      backdrop-filter: blur(10px);
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+      text-decoration: none;
+    }
+    .brand:hover { text-decoration: none; }
+    .brand__logo {
+      display: block;
+      width: 2.1rem;
+      height: 2.1rem;
+      border-radius: 0.4rem;
+      object-fit: cover;
+    }
+    header h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      background: linear-gradient(100deg, #ff8a8a 0%, #ee0000 45%, #ff7a3d 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
     header nav a { margin-left: 1.5rem; color: var(--muted); font-size: 0.9rem; }
     header nav a:hover { color: var(--fg); }
     .hero { text-align: center; padding: 5rem 2rem 4rem; }
-    .hero h2 { font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem; }
-    .hero p { font-size: 1.2rem; color: var(--muted); max-width: 700px; margin: 0 auto 2rem; }
+    .hero-logo {
+      display: block;
+      width: 7.5rem;
+      height: 7.5rem;
+      margin: 0 auto 1.5rem;
+      border-radius: 1.1rem;
+      object-fit: cover;
+      box-shadow: 0 12px 40px rgba(238, 0, 0, 0.18);
+    }
+    .hero h2 { font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem; letter-spacing: -0.02em; }
+    .hero h2 .grad {
+      background: linear-gradient(100deg, #ff9b9b 0%, #ee0000 40%, #ff6a3d 75%, #ffb347 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .hero > p:not(.made-at) { font-size: 1.2rem; color: var(--muted); max-width: 700px; margin: 0 auto 2rem; }
     .badges { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem; }
     .badge { display: inline-block; background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; color: var(--muted); }
     .cta { display: inline-block; background: var(--accent); color: #fff; padding: 0.7rem 2rem; border-radius: 6px; font-weight: 600; font-size: 1rem; margin: 0 0.5rem; }
-    .cta:hover { background: #c00; text-decoration: none; }
-    .cta-secondary { background: var(--fg); }
-    .cta-secondary:hover { background: #333; }
+    .cta:hover { background: var(--accent-hover); text-decoration: none; }
+    .cta-secondary { background: var(--cta-secondary); color: var(--fg); }
+    .cta-secondary:hover { background: var(--cta-secondary-hover); }
     section { padding: 4rem 2rem; max-width: 1000px; margin: 0 auto; }
     section.alt { background: var(--section-bg); max-width: 100%; }
     section.alt > div { max-width: 1000px; margin: 0 auto; }
     section h3 { font-size: 1.6rem; margin-bottom: 1.5rem; }
     section h4 { font-size: 1.1rem; margin-bottom: 0.5rem; }
     section p { color: var(--muted); margin-bottom: 1rem; }
-    .pipeline { display: flex; gap: 0; align-items: stretch; margin: 2rem 0; flex-wrap: wrap; }
-    .step { flex: 1; min-width: 140px; text-align: center; padding: 1.5rem 1rem; position: relative; background: #fff; border: 1px solid var(--border); }
-    .step:not(:last-child)::after { content: '\2192'; position: absolute; right: -14px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; color: var(--muted); z-index: 1; }
-    .step-num { display: inline-block; width: 28px; height: 28px; line-height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; }
-    .step h4 { font-size: 0.95rem; margin-bottom: 0.3rem; }
-    .step p { font-size: 0.8rem; margin: 0; }
+    .flow-lead { max-width: 720px; }
+    .flow-kicker {
+      display: inline-block;
+      margin-bottom: 0.75rem;
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .flow {
+      margin: 2rem 0 1rem;
+      padding: 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .flow-spine {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0.6rem;
+      position: relative;
+    }
+    .flow-stage {
+      position: relative;
+      text-align: left;
+      padding: 1rem 0.85rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      min-height: 132px;
+    }
+    .flow-stage--analyze {
+      border-color: rgba(238, 0, 0, 0.55);
+      box-shadow: inset 0 0 0 1px rgba(238, 0, 0, 0.12);
+    }
+    .flow-stage__num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      margin-bottom: 0.45rem;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .flow-stage h4 {
+      font-size: 0.95rem;
+      margin-bottom: 0.35rem;
+    }
+    .flow-stage p {
+      font-size: 0.78rem;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .flow-stage__tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      margin-top: 0.7rem;
+    }
+    .flow-tag {
+      display: inline-block;
+      padding: 0.15rem 0.45rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--code-bg);
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .flow-tag--accent {
+      border-color: rgba(238, 0, 0, 0.45);
+      color: #ff6b6b;
+    }
+    .flow-merge {
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px dashed var(--border);
+    }
+    .flow-merge__label {
+      margin-bottom: 0.45rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .flow-merge__help {
+      margin: 0 0 0.95rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+      max-width: 720px;
+    }
+    .flow-merge__help code {
+      font-size: 0.84em;
+    }
+    .flow-gates {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.6rem;
+      position: relative;
+    }
+    .flow-gate {
+      padding: 0.85rem 0.75rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+    }
+    .flow-gate h5 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+      color: var(--fg);
+    }
+    .flow-gate p {
+      font-size: 0.75rem;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin: 0.9rem 0 0.2rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .flow-arrow__line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), var(--accent), var(--border), transparent);
+    }
+    .flow-outcome {
+      margin-top: 0.75rem;
+      padding: 0.9rem 1rem;
+      border: 1px solid rgba(238, 0, 0, 0.35);
+      border-radius: 8px;
+      background: rgba(238, 0, 0, 0.06);
+      text-align: center;
+    }
+    .flow-outcome strong { color: var(--fg); }
+    .flow-outcome span { color: var(--muted); font-size: 0.85rem; }
+    .cert-level {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      white-space: nowrap;
+    }
+    .cert-shield {
+      display: inline-block;
+      width: 0.95em;
+      height: 0.95em;
+      vertical-align: -0.1em;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
     .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
-    .card { border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; }
+    .card { border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; background: var(--surface); }
     .card h4 { margin-bottom: 0.5rem; }
     .card p { font-size: 0.9rem; margin: 0; }
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin-bottom: 0.5rem;
+    }
+    .card-title h4 { margin: 0; }
+    .card-title img {
+      display: block;
+      width: 1.4rem;
+      height: 1.4rem;
+      object-fit: contain;
+    }
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin-bottom: 1.5rem;
+    }
+    .section-heading h3 { margin: 0; }
+    .section-heading__icon {
+      display: block;
+      width: 1.45rem;
+      height: 1.45rem;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .section-heading__icon * {
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .section-heading__icon [data-fill] {
+      fill: currentColor;
+      stroke: none;
+    }
+    .gs-flows {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.25rem;
+      margin: 1.5rem 0 1.25rem;
+    }
+    .gs-flow {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      padding: 1.25rem 1.15rem;
+    }
+    .gs-flow h4 {
+      margin: 0 0 0.35rem;
+      font-size: 1.05rem;
+    }
+    .gs-flow > p {
+      font-size: 0.88rem;
+      margin-bottom: 0.85rem;
+      min-height: 2.8em; /* keep step lists aligned across the two columns */
+    }
+    .gs-steps {
+      margin: 0 0 0.9rem 1.1rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+    .gs-steps li { margin-bottom: 0.35rem; }
+    .gs-steps strong { color: var(--fg); }
+    .gs-flow pre {
+      background: var(--code-bg);
+      padding: 0.85rem 0.9rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 0;
+      border: 1px solid var(--border);
+    }
+    .gs-flow code {
+      background: transparent;
+      padding: 0;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: var(--muted);
+      white-space: pre;
+    }
+    .gs-shared {
+      margin-top: 0.25rem;
+      padding: 1.1rem 1.15rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+    }
+    .gs-shared h4 {
+      margin: 0 0 0.45rem;
+      font-size: 1rem;
+    }
+    .gs-shared p { margin: 0 0 0.75rem; font-size: 0.9rem; }
+    .gs-shared pre {
+      background: var(--code-bg);
+      padding: 0.85rem 0.9rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 0;
+      border: 1px solid var(--border);
+    }
+    .gs-shared code {
+      background: transparent;
+      padding: 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+      white-space: pre;
+    }
+    @media (max-width: 800px) {
+      .gs-flows { grid-template-columns: 1fr; }
+    }
     table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
     th, td { padding: 0.7rem 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-    th { font-weight: 600; background: var(--code-bg); }
+    th { font-weight: 600; background: var(--code-bg); color: var(--fg); }
+    td { color: var(--muted); }
+    td strong { color: var(--fg); }
     .gates { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
     .gate { border-left: 4px solid var(--accent); padding: 1rem; background: var(--code-bg); border-radius: 0 6px 6px 0; }
     .gate h4 { font-size: 0.95rem; margin-bottom: 0.3rem; }
     .gate p { font-size: 0.85rem; margin: 0; }
     footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
     footer a { color: var(--muted); }
+    footer a:hover { color: var(--fg); }
+    pre { border: 1px solid var(--border); }
+    .hero .made-at {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.95rem;
+      width: fit-content;
+      margin: 3.5rem auto 0;
+      padding-top: 0;
+      color: var(--muted);
+      font-size: 0.81rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .made-at__label { line-height: 1; }
+    .made-at__logos {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.62rem;
+    }
+    .made-at__redhat {
+      display: block;
+      height: 1.68rem;
+      width: auto;
+    }
+    .made-at__name {
+      font-size: 0.87rem;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      text-transform: none;
+      color: var(--fg);
+    }
+    @media (max-width: 900px) {
+      .flow-spine,
+      .flow-gates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
     @media (max-width: 700px) {
       .hero h2 { font-size: 1.8rem; }
-      .pipeline { flex-direction: column; }
-      .step:not(:last-child)::after { content: '\2193'; right: 50%; top: auto; bottom: -14px; transform: translateX(50%); }
+      .flow-spine,
+      .flow-gates { grid-template-columns: 1fr; }
+      .flow { padding: 1rem; }
     }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>ABEvalFlow</h1>
+  <a class="brand" href="#">
+    <img class="brand__logo" src="assets/images/agentic_eval_flow_logo.png" alt="">
+    <h1>Agentic Eval Flow</h1>
+  </a>
   <nav>
     <a href="#pipeline">Pipeline</a>
     <a href="#engines">Engines</a>
-    <a href="#gates">Gates</a>
+    <a href="#gates">Scorecard</a>
+    <a href="#triggers">Triggers</a>
     <a href="#observability">Observability</a>
     <a href="#getting-started">Get Started</a>
     <a href="https://github.com/RHEcosystemAppEng/ABEvalFlow">GitHub</a>
@@ -79,7 +465,8 @@
 </header>
 
 <div class="hero">
-  <h2>Make AI artifact evaluation<br>automated, measurable, and observable</h2>
+  <img class="hero-logo" src="assets/images/agentic_eval_flow_logo.png" alt="Agentic Eval Flow">
+  <h2>Make AI artifact evaluation<br><span class="grad">automated, measurable, and observable</span></h2>
   <p>Tekton-orchestrated pipeline on OpenShift that evaluates skills, agents, and MCP servers through A/B testing, statistical analysis, and multi-gate certification.</p>
   <div class="badges">
     <span class="badge">Python 3.11+</span>
@@ -87,60 +474,184 @@
     <span class="badge">Tekton / OpenShift</span>
     <span class="badge">PostgreSQL</span>
     <span class="badge">MLflow</span>
+    <span class="badge">Agent-Eval-Harness</span>
+
   </div>
-  <a class="cta" href="#getting-started">Get Started</a>
-  <a class="cta cta-secondary" href="https://github.com/RHEcosystemAppEng/ABEvalFlow">View on GitHub</a>
+  <div class="hero-cta">
+    <a class="cta" href="#getting-started">Get Started</a>
+    <a class="cta cta-secondary" href="https://github.com/RHEcosystemAppEng/ABEvalFlow">View on GitHub</a>
+  </div>
+  <p class="made-at">
+    <span class="made-at__label">Made at</span>
+    <span class="made-at__logos">
+      <img src="assets/images/redhat-logo.svg" alt="" class="made-at__redhat" aria-hidden="true">
+      <span class="made-at__name">Red Hat</span>
+    </span>
+  </p>
 </div>
 
 <section id="pipeline">
-  <h3>How the Pipeline Works</h3>
-  <p>Every submission flows through six stages — from validation to persistent results.</p>
-  <div class="pipeline">
-    <div class="step"><div class="step-num">1</div><h4>Prepare</h4><p>Clone, validate, generate missing test artifacts</p></div>
-    <div class="step"><div class="step-num">2</div><h4>Test</h4><p>Security scan, LLM quality review</p></div>
-    <div class="step"><div class="step-num">3</div><h4>Evaluate</h4><p>Run A/B trials across treatment vs control</p></div>
-    <div class="step"><div class="step-num">4</div><h4>Analyze</h4><p>Statistical tests, scorecard, certification</p></div>
-    <div class="step"><div class="step-num">5</div><h4>Store</h4><p>PostgreSQL, MinIO, MLflow</p></div>
-    <div class="step"><div class="step-num">6</div><h4>Cleanup</h4><p>Remove temp workspaces</p></div>
+  <p class="flow-kicker">Architecture</p>
+  <div class="section-heading">
+    <h3>How the Pipeline Works</h3>
+    <svg class="section-heading__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="5" cy="12" r="2.2" data-fill/>
+      <circle cx="12" cy="12" r="2.2" data-fill/>
+      <circle cx="19" cy="12" r="2.2" data-fill/>
+      <path d="M7.2 12h2.6M14.2 12h2.6"/>
+    </svg>
+  </div>
+  <p class="flow-lead">Stages run the work. Gates decide the outcome — one scorecard, one certification decision.</p>
+
+  <div class="flow" aria-label="Pipeline stages and gate merge diagram">
+    <div class="flow-spine">
+      <article class="flow-stage">
+        <div class="flow-stage__num">1</div>
+        <h4>Prepare</h4>
+        <p>Clone, validate structure, generate missing test artifacts</p>
+      </article>
+      <article class="flow-stage">
+        <div class="flow-stage__num">2</div>
+        <h4>Test</h4>
+        <p>Pre-trial gates — security scan and LLM quality review</p>
+        <div class="flow-stage__tags">
+          <span class="flow-tag">Security</span>
+          <span class="flow-tag">Quality</span>
+        </div>
+      </article>
+      <article class="flow-stage">
+        <div class="flow-stage__num">3</div>
+        <h4>Evaluate</h4>
+        <p>Engine trials — compare variants or score a single run — plus behavioral edge cases</p>
+        <div class="flow-stage__tags">
+          <span class="flow-tag flow-tag--accent">Single + A/B compare</span>
+          <span class="flow-tag">Behavioral</span>
+        </div>
+      </article>
+      <article class="flow-stage flow-stage--analyze">
+        <div class="flow-stage__num">4</div>
+        <h4>Analyze</h4>
+        <p>Gates merge here into scorecard + certification</p>
+        <div class="flow-stage__tags">
+          <span class="flow-tag flow-tag--accent">Scorecard</span>
+        </div>
+      </article>
+      <article class="flow-stage">
+        <div class="flow-stage__num">5</div>
+        <h4>Store</h4>
+        <p>Persist results to PostgreSQL, MinIO, and MLflow</p>
+      </article>
+    </div>
+
+    <div class="flow-merge" id="gates">
+      <p class="flow-merge__label">Multi-gate scorecard</p>
+      <p class="flow-merge__help">Each gate can <code>block</code>, <code>warn</code>, or be <code>disabled</code>. Combine with <code>all_pass</code>, <code>any_pass</code>, or <code>weighted</code>.</p>
+      <div class="flow-gates">
+        <article class="flow-gate">
+          <h5>Security</h5>
+          <p>Prompt injection, exfiltration, policy findings</p>
+        </article>
+        <article class="flow-gate">
+          <h5>Quality</h5>
+          <p>LLM review for coherence, coverage, clarity</p>
+        </article>
+        <article class="flow-gate">
+          <h5>Evaluation</h5>
+          <p>Single or A/B results — uplift, pass rates, significance</p>
+        </article>
+        <article class="flow-gate">
+          <h5>Behavioral</h5>
+          <p>Edge-case and adversarial robustness trials</p>
+        </article>
+      </div>
+      <div class="flow-arrow" aria-hidden="true">
+        <span class="flow-arrow__line"></span>
+        <span>merge into Analyze</span>
+        <span class="flow-arrow__line"></span>
+      </div>
+      <div class="flow-outcome">
+        <strong>One recommendation</strong>
+        <span> — Foundational → Trusted →
+          <span class="cert-level"><strong>Certified</strong>
+            <svg class="cert-shield" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M12 2 4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm0 18.2c-3.53-1.05-6.2-4.58-6.2-8.11V6.3l6.2-2.32 6.2 2.32v5.79c0 3.53-2.67 7.06-6.2 8.11z"/>
+              <path fill="currentColor" d="M10.5 11.5 9 13l3 3 5-5-1.5-1.5L12 13l-1.5-1.5z" opacity=".95"/>
+            </svg>
+          </span>
+        </span>
+      </div>
+    </div>
   </div>
 </section>
 
 <section class="alt" id="engines">
   <div>
-    <h3>Five Evaluation Engines</h3>
+    <div class="section-heading">
+      <h3>Evaluation Engines</h3>
+      <svg class="section-heading__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M17.9 6.1l-1.6 1.6M7.7 16.3l-1.6 1.6"/>
+      </svg>
+    </div>
     <p>Choose the right engine for your artifact type and evaluation needs.</p>
     <table>
       <thead><tr><th>Engine</th><th>Evaluates</th><th>Mode</th><th>Isolation</th></tr></thead>
       <tbody>
-        <tr><td><strong>Harbor</strong></td><td>Skills, general agents</td><td>A/B (treatment vs control)</td><td>Containerized</td></tr>
-        <tr><td><strong>ASE</strong></td><td>Skills</td><td>A/B (LLM-as-judge)</td><td>No container</td></tr>
-        <tr><td><strong>A2A</strong></td><td>A2A-protocol agents</td><td>A/B (treatment vs control)</td><td>Containerized</td></tr>
+        <tr><td><strong>Agent-Eval-Harness (AEH)</strong></td><td>Agents, skills</td><td>Judge-based evaluation + A/B (treatment vs control)</td><td>OpenShift pods</td></tr>
+        <tr><td><strong>Agent-Skill-Eval (ASE)</strong></td><td>Skills</td><td>A/B (LLM-as-judge)</td><td>No container</td></tr>
+        <tr><td><strong>A2A</strong></td><td>A2A-protocol agents</td><td>A/B (treatment vs control) + Single Eval</td><td>Containerized</td></tr>
         <tr><td><strong>MCPChecker</strong></td><td>MCP servers</td><td>Task-based verification</td><td>No container</td></tr>
-        <tr><td><strong>AEH</strong></td><td>Agents, skills</td><td>Judge-based evaluation</td><td>K8s pods</td></tr>
+
       </tbody>
     </table>
   </div>
 </section>
 
-<section id="gates">
-  <h3>Multi-Gate Scorecard</h3>
-  <p>Every submission passes through configurable gates. The unified scorecard combines all results into a single pass/warn/fail recommendation with certification levels.</p>
-  <div class="gates">
-    <div class="gate"><h4>Evaluation Gate</h4><p>A/B test results — uplift, pass rates, statistical significance</p></div>
-    <div class="gate"><h4>Security Gate</h4><p>Cisco AI Defense — prompt injection, data exfiltration detection</p></div>
-    <div class="gate"><h4>Quality Gate</h4><p>LLM-powered review — coherence, coverage, clarity, feasibility</p></div>
-    <div class="gate"><h4>Behavioral Gate</h4><p>Edge case evaluation — robustness under adversarial inputs</p></div>
+<section id="triggers">
+  <div class="section-heading">
+    <h3>Connectivity &amp; Triggers</h3>
+    <svg class="section-heading__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M13 3 5.5 13.5h5L10 21l8.5-11.5h-5L13 3z" data-fill/>
+    </svg>
   </div>
-  <p style="margin-top: 1.5rem;">Gate modes: <code>block</code> (must pass), <code>warn</code> (advisory), <code>disabled</code>. Combination: <code>all_pass</code>, <code>any_pass</code>, or <code>weighted</code>.</p>
-  <p>Certification levels: <strong>Foundational</strong> &rarr; <strong>Trusted</strong> &rarr; <strong>Certified</strong></p>
+  <p>Kick off evaluations from the systems you already use. Tekton EventListeners accept webhooks for pull requests and image pushes — sources and filters are configurable per deployment.</p>
+  <div class="features">
+    <div class="card">
+      <div class="card-title">
+        <img src="assets/images/github.svg" alt="">
+        <h4>GitHub</h4>
+      </div>
+      <p>PR and push webhooks on submission or config repos. Opens, updates, and merges can start a PipelineRun.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <img src="assets/images/gitlab.svg" alt="">
+        <h4>GitLab</h4>
+      </div>
+      <p>Merge-request and push hooks with the same EventListener pattern — wire your GitLab project to the OpenShift route.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <img src="assets/images/quay.svg" alt="">
+        <h4>Quay</h4>
+      </div>
+      <p>Repository notifications on image push. Evaluate a newly published tag without a manual trigger.</p>
+    </div>
+  </div>
 </section>
 
 <section class="alt" id="observability">
   <div>
-    <h3>Complete Observability</h3>
+    <div class="section-heading">
+      <h3>Complete Observability</h3>
+      <svg class="section-heading__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="10.5" cy="10.5" r="6.5"/>
+        <path d="M15.5 15.5 21 21"/>
+      </svg>
+    </div>
     <p>Every pipeline run is tracked end-to-end — from gate scores to LLM token usage.</p>
     <div class="features">
-      <div class="card"><h4>Normalized Database</h4><p>4 PostgreSQL tables: scorecards, gate results, certifications, and observability metrics. Query evaluation history with simple SQL.</p></div>
+      <div class="card"><h4>Normalized Database</h4><p>PostgreSQL tables: scorecards, gate results, certifications, and observability metrics. Query evaluation history with simple SQL.</p></div>
       <div class="card"><h4>Token & Cost Tracking</h4><p>Real LLM token counts captured per pipeline run. Track prompt/completion tokens, model usage, and estimated costs.</p></div>
       <div class="card"><h4>MLflow Integration</h4><p>Auto-logs experiments, metrics, tags, and artifacts. One experiment per submission, run comparison out of the box.</p></div>
       <div class="card"><h4>MinIO Artifact Storage</h4><p>Reports, scorecards, security scans, and debug artifacts stored with full provenance.</p></div>
@@ -149,47 +660,126 @@
 </section>
 
 <section>
-  <h3>Statistical Rigor</h3>
-  <p>Every A/B evaluation includes proper statistical testing to avoid false conclusions.</p>
+  <div class="section-heading">
+    <h3>Statistical Rigor</h3>
+    <svg class="section-heading__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 19V5"/>
+      <path d="M4 19h16"/>
+      <path d="M8 16v-5"/>
+      <path d="M12 16V8"/>
+      <path d="M16 16v-8"/>
+    </svg>
+  </div>
+  <p>Each variant runs <strong>N configurable repetitions</strong> (default 20 per arm — treatment + control). Stats are computed across those trials so noisy single runs don’t decide the gate.</p>
   <div class="features">
-    <div class="card"><h4>Welch's t-test</h4><p>Tests whether the mean reward difference between treatment and control is statistically significant.</p></div>
-    <div class="card"><h4>Fisher's Exact Test</h4><p>Tests whether the pass rate difference is significant using binary pass/fail counts.</p></div>
-    <div class="card"><h4>Uplift & Pass Rates</h4><p>Reports treatment vs control pass rates, uplift gap, mean reward, and confidence metrics.</p></div>
+    <div class="card"><h4>N repetitions</h4><p>Configurable via <code>n-trials</code> / metadata. Same task is executed N times per variant to estimate pass rate and mean reward with real variance.</p></div>
+    <div class="card"><h4>Welch's t-test</h4><p>Compares mean reward between arms when sample sizes or variances differ — stronger than a single-run delta, especially when N is modest.</p></div>
+    <div class="card"><h4>Fisher's Exact Test</h4><p>Tests whether pass/fail counts differ significantly between treatment and control (good fit for binary outcomes at typical N).</p></div>
+    <div class="card"><h4>Uplift &amp; Pass Rates</h4><p>Reports treatment vs control pass rates, uplift gap, mean reward, and confidence metrics used by the evaluation gate.</p></div>
   </div>
 </section>
 
 <section class="alt" id="getting-started">
   <div>
-    <h3>Get Started</h3>
-    <p>Submit a skill for evaluation in three steps.</p>
-    <h4>1. Create your submission</h4>
-    <pre style="background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; margin: 1rem 0;"><code>my-skill/
-  metadata.yaml          # name, eval_engine, gate_policy
+    <div class="section-heading">
+      <h3>Get Started</h3>
+      <svg class="section-heading__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M5 12h11"/>
+        <path d="M12 6l6 6-6 6"/>
+      </svg>
+    </div>
+    <p>Submit an AEH package to OpenShift. Pick the flow that matches what you are evaluating.</p>
+
+    <div class="gs-flows">
+      <article class="gs-flow">
+        <h4>Skill evaluation</h4>
+        <p>Score a skill end to end (<code>SKILL.md</code> under test).</p>
+        <ol class="gs-steps">
+          <li><strong>Submit</strong> the skill plus meta files: <code>metadata.yaml</code> and <code>eval.yaml</code> (can be auto-generated)</li>
+          <li><strong>Provide</strong> cases / datasets for evaluation under <code>cases/</code></li>
+          <li><strong>Run</strong> via the pipeline (<code>eval_engine: aeh</code>)</li>
+        </ol>
+        <pre><code>my-skill-eval/
+  metadata.yaml       # eval_engine: aeh
+  eval.yaml           # skill, judges, thresholds (can be auto-generated)
   skills/
-    SKILL.md             # your skill definition
-  instruction.md         # task description (or let AI generate it)
-  tests/
-    test_outputs.py      # pytest verification tests</code></pre>
-    <h4>2. Push to the submissions repo</h4>
-    <pre style="background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; margin: 1rem 0;"><code>git clone https://github.com/RHEcosystemAppEng/skill-submissions.git
-cp -r my-skill submissions/
-git add submissions/my-skill && git commit -m "Submit my-skill" && git push</code></pre>
-    <h4>3. Pipeline runs automatically</h4>
-    <p>The push triggers the evaluation pipeline. Results appear in the OpenShift console, PostgreSQL, MinIO, and MLflow.</p>
+    my-skill/
+      SKILL.md
+  cases/
+    case-001/
+      input.yaml
+      annotations.yaml</code></pre>
+      </article>
+
+      <article class="gs-flow">
+        <h4>Agent evaluation</h4>
+        <p>Score whether an agent can navigate and use docs/APIs (prompt / agentic-docs mode).</p>
+        <ol class="gs-steps">
+          <li><strong>Submit</strong> meta files: <code>metadata.yaml</code> and <code>eval.yaml</code> (prompt/docs config; can be auto-generated)</li>
+          <li><strong>Provide</strong> cases / datasets for evaluation under <code>cases/</code></li>
+          <li><strong>Run</strong> via the pipeline — no skill package required</li>
+        </ol>
+        <pre><code>my-agent-eval/
+  metadata.yaml       # eval_engine: aeh
+  eval.yaml           # prompt / docs-focused config (can be auto-generated)
+  cases/
+    case-001/
+      input.yaml      # agent task / question
+      annotations.yaml</code></pre>
+      </article>
+    </div>
+
+    <div class="gs-shared">
+      <h4>Push &amp; trigger</h4>
+      <p><strong>Skill evaluation</strong> — commit or open a PR on the submissions repo. GitHub / GitLab webhooks start the CI pipeline (security + quality gates included). Use <code>aeh-mode: single</code> or <code>pairwise</code> for A-only vs A/B.</p>
+      <pre><code>git clone https://github.com/RHEcosystemAppEng/skill-submissions.git
+cp -r my-skill-eval submissions/
+git add submissions/my-skill-eval && git commit -m "Submit skill eval" && git push</code></pre>
+      <p style="margin-top: 1rem;"><strong>Agent evaluation</strong> — two trigger styles (configurable):</p>
+      <ul class="gs-steps" style="list-style: disc;">
+        <li><strong>Git PR / push</strong> — submission package with cases + <code>eval.yaml</code> (full CI path when configured)</li>
+        <li><strong>Quay image push</strong> — evaluate a newly published agent image (ephemeral deploy). Monitoring-style runs focus on agent eval and skip security / quality gates</li>
+      </ul>
+    </div>
   </div>
 </section>
 
 <section>
-  <h3>Where Results Live</h3>
+  <div class="section-heading">
+    <h3>Where Results Live</h3>
+    <svg class="section-heading__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <ellipse cx="12" cy="6" rx="7" ry="2.5"/>
+      <path d="M5 6v6c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6"/>
+      <path d="M5 12v6c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-6"/>
+    </svg>
+  </div>
   <div class="features">
-    <div class="card"><h4>PostgreSQL</h4><p>Evaluation runs, trials, scorecards, gate results, certifications, observability metrics — all queryable.</p></div>
-    <div class="card"><h4>MinIO</h4><p>report.json, report.md, scorecard.json, security scans, debug artifacts — full provenance per run.</p></div>
-    <div class="card"><h4>MLflow</h4><p>Experiment tracking with metrics, parameters, tags, and artifacts. Compare runs across submissions.</p></div>
+    <div class="card">
+      <div class="card-title">
+        <img src="assets/images/postgresql.svg" alt="">
+        <h4>PostgreSQL</h4>
+      </div>
+      <p>Evaluation runs, trials, scorecards, gate results, certifications, observability metrics — all queryable.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <img src="assets/images/minio.svg" alt="">
+        <h4>MinIO</h4>
+      </div>
+      <p>report.json, report.md, scorecard.json, security scans, debug artifacts — full provenance per run.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <img src="assets/images/mlflow-icon.svg" alt="">
+        <h4>MLflow</h4>
+      </div>
+      <p>Experiment tracking with metrics, parameters, tags, and artifacts. Compare runs across submissions.</p>
+    </div>
   </div>
 </section>
 
 <footer>
-  <p>ABEvalFlow &mdash; <a href="https://github.com/RHEcosystemAppEng/ABEvalFlow">GitHub</a> &mdash; Apache-2.0 License &mdash; Red Hat Ecosystem App Engineering</p>
+  <p>Agentic Eval Flow &mdash; <a href="https://github.com/RHEcosystemAppEng/ABEvalFlow">GitHub</a> &mdash; Apache-2.0 License &mdash; Red Hat Ecosystem App Engineering</p>
 </footer>
 
 </body>

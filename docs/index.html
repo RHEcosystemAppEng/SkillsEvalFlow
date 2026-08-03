@@ -26,6 +26,7 @@
     }
     color-scheme: dark;
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-padding-top: calc(var(--header-h) + 0.75rem); scroll-behavior: smooth; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg);
@@ -123,7 +124,8 @@
     .cta-secondary { background: var(--cta-secondary); color: var(--fg); }
     .cta-secondary:hover { background: var(--cta-secondary-hover); }
     section { padding: 4.25rem 2rem; max-width: 1120px; margin: 0 auto; }
-    section.alt { background: var(--section-bg); max-width: 100%; }
+    /* Full-bleed width only — no opaque band so the page gradient shows through */
+    section.alt { background: transparent; max-width: 100%; }
     section.alt > div { max-width: 1120px; margin: 0 auto; }
     section h3 { font-size: 1.85rem; margin-bottom: 1.5rem; }
     section h4 { font-size: 1.2rem; margin-bottom: 0.5rem; }
@@ -215,11 +217,11 @@
       text-align: center;
     }
     .flow-merge__label {
-      margin: 0 auto 0.45rem;
-      color: var(--muted);
-      font-size: 0.9rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
+      margin: 0 auto 0.55rem;
+      color: #fff;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
       text-transform: uppercase;
     }
     .flow-merge__help {

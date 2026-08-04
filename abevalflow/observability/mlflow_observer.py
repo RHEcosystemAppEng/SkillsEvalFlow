@@ -65,8 +65,6 @@ class MLflowObserver:
                     "control_pass_rate": s.control.pass_rate,
                     "treatment_n_trials": s.treatment.n_trials,
                     "control_n_trials": s.control.n_trials,
-                    "gates_passed": _count_gates(result, passed=True),
-                    "gates_failed": _count_gates(result, passed=False),
                 }
             )
 
@@ -106,11 +104,6 @@ class MLflowObserver:
         )
 
 
-def _count_gates(result: AnalysisResult, passed: bool) -> int:
-    """Count security scan gates that passed/failed."""
-    return sum(1 for scan in result.security_scans if scan.passed == passed)
-
-
 def _log_scorecard_metrics(report_dir: Path) -> None:
     """Log gate scores and certification from scorecard.json if present."""
 
@@ -124,13 +117,18 @@ def _log_scorecard_metrics(report_dir: Path) -> None:
         if "highest_certification" in scorecard:
             mlflow.set_tag("highest_certification", scorecard["highest_certification"])
 
+        if "gates_passed" in scorecard:
+            mlflow.log_metric("gates_passed", scorecard["gates_passed"])
+        if "gates_failed" in scorecard:
+            mlflow.log_metric("gates_failed", scorecard["gates_failed"])
+
         for gate in scorecard.get("gates", []):
-            gate_name = gate.get("gate_name", "unknown")
+            key = gate.get("policy_key") or gate.get("gate_name", "unknown")
             if "score" in gate:
-                mlflow.log_metric(f"gate_score_{gate_name}", gate["score"])
+                mlflow.log_metric(f"gate_score_{key}", gate["score"])
             if "findings_count" in gate or "findings" in gate:
                 count = gate.get("findings_count", len(gate.get("findings", [])))
-                mlflow.log_metric(f"gate_findings_{gate_name}", count)
+                mlflow.log_metric(f"gate_findings_{key}", count)
 
         cert = scorecard.get("certification")
         if cert:

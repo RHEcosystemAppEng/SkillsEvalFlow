@@ -81,6 +81,10 @@ spec:
       type: string
       default: "main"
       description: Branch or SHA of the pipeline repo to use for scripts
+    - name: mlflow-tracking-uri
+      type: string
+      default: ""
+      description: MLflow tracking URI. Observer activates only when set.
   workspaces:
     - name: source
       description: Shared workspace containing evaluation artifacts
@@ -95,7 +99,7 @@ spec:
               key: database-url
               optional: true
         - name: MLFLOW_TRACKING_URI
-          value: "http://abevalflow-mlflow.guy-ziv-evalflow.svc.cluster.local:5000"
+          value: "$(params.mlflow-tracking-uri)"
       script: |
         #!/usr/bin/env bash
         set -euo pipefail

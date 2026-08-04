@@ -141,9 +141,11 @@ class TestMLflowObserver:
         scorecard = {
             "recommendation": "pass",
             "highest_certification": "trusted",
+            "gates_passed": 2,
+            "gates_failed": 0,
             "gates": [
-                {"gate_name": "evaluation", "score": 0.85, "findings_count": 0},
-                {"gate_name": "security", "score": 1.0, "findings_count": 2},
+                {"gate_name": "evaluation", "policy_key": "harbor", "score": 0.85, "findings_count": 0},
+                {"gate_name": "security", "policy_key": "cisco", "score": 1.0, "findings_count": 2},
             ],
         }
         (tmp_path / "scorecard.json").write_text(json.dumps(scorecard))
@@ -151,9 +153,11 @@ class TestMLflowObserver:
         observer = MLflowObserver(tracking_uri="http://mlflow:5000")
         observer.on_evaluation_stored(_sample_result(), uuid.uuid4(), report_dir=tmp_path)
 
-        mock_mlflow.log_metric.assert_any_call("gate_score_evaluation", 0.85)
-        mock_mlflow.log_metric.assert_any_call("gate_score_security", 1.0)
-        mock_mlflow.log_metric.assert_any_call("gate_findings_security", 2)
+        mock_mlflow.log_metric.assert_any_call("gates_passed", 2)
+        mock_mlflow.log_metric.assert_any_call("gates_failed", 0)
+        mock_mlflow.log_metric.assert_any_call("gate_score_harbor", 0.85)
+        mock_mlflow.log_metric.assert_any_call("gate_score_cisco", 1.0)
+        mock_mlflow.log_metric.assert_any_call("gate_findings_cisco", 2)
         mock_mlflow.set_tag.assert_any_call("highest_certification", "trusted")
 
     @patch("abevalflow.observability.mlflow_observer.mlflow")

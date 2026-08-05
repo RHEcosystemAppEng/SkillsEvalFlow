@@ -19,7 +19,9 @@ spec:
       default: ""
       description: >-
         Specific component name to extract from the snapshot. If empty,
-        the first component is used.
+        the first component (.components[0]) is used. For multi-component
+        applications, set this to the component you want to evaluate to
+        avoid accidentally selecting the wrong one.
   results:
     - name: component-image
       description: Full container image reference (with digest) from the snapshot

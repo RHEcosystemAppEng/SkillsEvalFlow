@@ -13,6 +13,15 @@ spec:
     "remote" submits an evaluation Pod to a workload cluster. Consumers
     provide the target endpoint (AGENT_ENDPOINT / MCP_URL) as a parameter;
     this task does not deploy or manage any target services.
+
+    Validated engine x mode combinations:
+      a2a + remote: fully tested (E2E on Konflux)
+      a2a + local:  supported (agent must be reachable from pipeline cluster)
+      mcpchecker + local: supported (MCP server must be reachable)
+      mcpchecker + remote: supported (untested)
+      ase + local: supported (no external endpoint needed)
+      harbor + local: limited (no scaffold/build; uses local environment only)
+      harbor + remote: not supported (use standalone ABEvalFlow pipeline)
   params:
     - name: eval-engine
       type: string
@@ -34,6 +43,17 @@ spec:
     - name: pipeline-repo-revision
       type: string
       default: "main"
+    - name: submission-repo-url
+      type: string
+      default: ""
+      description: >-
+        Git repo containing the submission definition. Required for remote
+        mode when submissions are in a different repo from the pipeline.
+        If empty, falls back to pipeline-repo-url.
+    - name: submission-repo-revision
+      type: string
+      default: "main"
+      description: Git branch/tag/SHA of the submission repo
     - name: eval-base-image
       type: string
       default: "quay.io/rh-ee-ikrispin/abevalflow-eval-base:latest"
@@ -62,10 +82,12 @@ spec:
       description: "URL of the MCP server (required when eval-engine=mcpchecker)"
     - name: mcpchecker-agent-model
       type: string
-      default: "google:gemini-2.5-flash"
+      default: ""
+      description: "MCPChecker agent model (e.g. google:gemini-2.5-flash). Empty = mcpchecker default."
     - name: mcpchecker-judge-model
       type: string
-      default: "openai:gpt-4o"
+      default: ""
+      description: "MCPChecker judge model (e.g. openai:gpt-4o). Empty = mcpchecker default."
     - name: mcpchecker-task-timeout
       type: string
       default: "10m"
@@ -128,7 +150,11 @@ spec:
               key: token
               optional: true
         - name: OPENAI_API_KEY
-          value: "$(params.llm-api-key)"
+          valueFrom:
+            secretKeyRef:
+              name: llm-credentials
+              key: api-key
+              optional: true
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
@@ -143,6 +169,15 @@ spec:
         COMMIT_SHA="$(params.commit-sha)"
         PIPELINE_RUN_ID="$(params.pipeline-run-id)"
         UPLIFT_THRESHOLD="$(params.uplift-threshold)"
+        LLM_API_KEY="${OPENAI_API_KEY:-$(params.llm-api-key)}"
+        export OPENAI_API_KEY="$LLM_API_KEY"
+
+        SUBMISSION_REPO_URL="$(params.submission-repo-url)"
+        SUBMISSION_REPO_REV="$(params.submission-repo-revision)"
+        if [ -z "$SUBMISSION_REPO_URL" ]; then
+          SUBMISSION_REPO_URL="$(params.pipeline-repo-url)"
+          SUBMISSION_REPO_REV="$(params.pipeline-repo-revision)"
+        fi
 
         echo "Engine: $EVAL_ENGINE"
         echo "Mode: $EVAL_MODE"
@@ -191,6 +226,7 @@ spec:
           RUN_ID=$(echo "$PIPELINE_RUN_ID" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-20)
           POD_NAME="eval-job-${RUN_ID:-$(date +%s)}"
           echo "Eval pod: $POD_NAME"
+          echo "Submission repo: $SUBMISSION_REPO_URL @ $SUBMISSION_REPO_REV"
 
           cat <<PODSPEC | oc apply -n $NAMESPACE -f -
           apiVersion: v1
@@ -222,7 +258,20 @@ spec:
                 export PYTHONPATH=/tmp/abevalflow
                 pip install --quiet --no-cache-dir pydantic scipy pyyaml 2>&1 | tail -1
 
+                # Clone submission repo if different from pipeline repo
                 SUBMISSION_PATH="/tmp/abevalflow/submissions/$SUBMISSION_DIR"
+                if [ "$SUBMISSION_REPO_URL" != "$(params.pipeline-repo-url)" ] || [ "$SUBMISSION_REPO_REV" != "$(params.pipeline-repo-revision)" ]; then
+                  echo "Cloning submission repo: $SUBMISSION_REPO_URL @ $SUBMISSION_REPO_REV"
+                  git clone --depth 1 --branch "$SUBMISSION_REPO_REV" \
+                    "$SUBMISSION_REPO_URL" /tmp/submission-repo
+                  SUBMISSION_PATH="/tmp/submission-repo/submissions/$SUBMISSION_DIR"
+                fi
+
+                if [ ! -d "\$SUBMISSION_PATH" ]; then
+                  echo "ERROR: Submission not found at \$SUBMISSION_PATH"
+                  exit 1
+                fi
+
                 RESULTS_DIR="/tmp/eval-results"
                 REPORT_DIR="/tmp/eval-reports"
                 mkdir -p "\$RESULTS_DIR" "\$REPORT_DIR"
@@ -276,6 +325,11 @@ spec:
                   HARBOR_EXIT=0
                   harbor run -c "\$RESULTS_DIR/config.yaml" -y 2>&1 || HARBOR_EXIT=\$?
                   echo "Harbor exit code: \$HARBOR_EXIT"
+                  if [ "\$HARBOR_EXIT" -ne 0 ] && [ ! -f "\$RESULTS_DIR/a2a-eval/result.json" ]; then
+                    find "\$RESULTS_DIR" -name "exception.txt" -exec echo "--- {} ---" \; -exec cat {} \; 2>/dev/null || true
+                    echo "ERROR: Harbor failed and produced no results"
+                    exit 1
+                  fi
                   find "\$RESULTS_DIR" -name "exception.txt" -exec echo "--- {} ---" \; -exec cat {} \; 2>/dev/null || true
 
                 elif [ "$EVAL_ENGINE" = "mcpchecker" ]; then
@@ -284,7 +338,11 @@ spec:
                   cd "\$SUBMISSION_PATH"
                   export MCP_URL="$MCP_URL"
                   envsubst < mcp-config.yaml > mcp-config-resolved.yaml 2>/dev/null || cp mcp-config.yaml mcp-config-resolved.yaml
-                  mcpchecker check eval.yaml --mcp-config-file mcp-config-resolved.yaml -o json > "\$RESULTS_DIR/mcpchecker-out.json" 2>&1 || true
+                  CHECKER_EXIT=0
+                  mcpchecker check eval.yaml --mcp-config-file mcp-config-resolved.yaml -o json > "\$RESULTS_DIR/mcpchecker-out.json" 2>&1 || CHECKER_EXIT=\$?
+                  if [ "\$CHECKER_EXIT" -ne 0 ]; then
+                    echo "WARNING: mcpchecker exited with code \$CHECKER_EXIT"
+                  fi
                 fi
 
                 echo "=== Running analyze.py ==="
@@ -298,15 +356,18 @@ spec:
                 [ -n "$COMMIT_SHA" ] && ANALYZE_ARGS+=(--commit-sha "$COMMIT_SHA")
                 [ -n "$PIPELINE_RUN_ID" ] && ANALYZE_ARGS+=(--pipeline-run-id "$PIPELINE_RUN_ID")
 
-                python scripts/analyze.py "\${ANALYZE_ARGS[@]}" 2>&1 || echo "WARNING: analyze.py failed"
+                python scripts/analyze.py "\${ANALYZE_ARGS[@]}" 2>&1
+                if [ ! -f "\$REPORT_DIR/report.json" ]; then
+                  echo "ERROR: analyze.py did not produce report.json"
+                  exit 1
+                fi
 
-                if [ -f "\$REPORT_DIR/report.json" ]; then
-                  echo "=== REPORT_JSON_START ==="
-                  cat "\$REPORT_DIR/report.json"
-                  echo ""
-                  echo "=== REPORT_JSON_END ==="
+                echo "=== REPORT_JSON_START ==="
+                cat "\$REPORT_DIR/report.json"
+                echo ""
+                echo "=== REPORT_JSON_END ==="
 
-                  python3 -c "
+                python3 -c "
                 import json
                 r = json.load(open('\$REPORT_DIR/report.json'))
                 s = r.get('summary', {})
@@ -315,10 +376,6 @@ spec:
                 n = s.get('treatment', {}).get('n_trials', 0)
                 print(json.dumps({'mean_reward': t if t is not None else 0.0, 'recommendation': rec, 'n_trials': n}))
                 "
-                else
-                  echo "WARNING: report.json not generated"
-                  python3 -c "import json; print(json.dumps({'mean_reward': 0.0, 'recommendation': 'fail', 'n_trials': 0}))"
-                fi
 
                 echo "=== Remote Eval Pod Complete ==="
               env:
@@ -375,6 +432,12 @@ spec:
             exit 1
           fi
 
+          if [ "$PHASE" = "Failed" ]; then
+            echo "ERROR: Remote eval pod failed"
+            oc delete pod $POD_NAME -n $NAMESPACE --ignore-not-found=true
+            exit 1
+          fi
+
           echo "=== Retrieving results ==="
           oc logs $POD_NAME -n $NAMESPACE 2>&1 | tee /tmp/eval-pod-logs.txt
 
@@ -404,16 +467,10 @@ spec:
                 open(rec_path, "w").write(recommendation)
             except json.JSONDecodeError as e:
                 print(f"ERROR: Failed to parse report.json: {e}")
+                sys.exit(1)
         else:
-            pattern = r'\{[^{}]*"mean_reward"[^{}]*\}'
-            matches = re.findall(pattern, logs)
-            if matches:
-                summary = json.loads(matches[-1])
-                open(treat_path, "w").write(str(summary.get("mean_reward", 0.0)))
-                open(ctrl_path, "w").write("0.0")
-                open(rec_path, "w").write(summary.get("recommendation", "fail"))
-            else:
-                print("WARNING: Could not extract results from pod logs")
+            print("ERROR: Could not extract report.json from pod logs")
+            sys.exit(1)
         EXTRACT
 
           oc delete pod $POD_NAME -n $NAMESPACE --ignore-not-found=true
@@ -498,6 +555,14 @@ spec:
           harbor run -c "$CONFIG_FILE" -y 2>&1 || HARBOR_EXIT=$?
           echo "Harbor exit code: $HARBOR_EXIT"
           find "$RESULTS_DIR" -name "exception.txt" -exec echo "--- {} ---" \; -exec cat {} \; 2>/dev/null || true
+          if [ "$HARBOR_EXIT" -ne 0 ]; then
+            RESULT_COUNT=$(find "$RESULTS_DIR" -name "result.json" 2>/dev/null | wc -l)
+            if [ "$RESULT_COUNT" -eq 0 ]; then
+              echo "ERROR: Harbor failed with no results produced"
+              exit 1
+            fi
+            echo "WARNING: Harbor exit $HARBOR_EXIT but $RESULT_COUNT result(s) found, continuing"
+          fi
 
         # ---------- MCPChecker Engine ----------
         elif [ "$EVAL_ENGINE" = "mcpchecker" ]; then
@@ -518,7 +583,15 @@ spec:
             export OPENAI_BASE_URL="$(params.llm-api-base)"
           fi
 
-          mcpchecker check eval.yaml --mcp-config-file mcp-config-resolved.yaml -o json > "$RESULTS_DIR/mcpchecker-out.json" 2>&1 || true
+          CHECKER_EXIT=0
+          mcpchecker check eval.yaml --mcp-config-file mcp-config-resolved.yaml -o json > "$RESULTS_DIR/mcpchecker-out.json" 2>&1 || CHECKER_EXIT=$?
+          if [ "$CHECKER_EXIT" -ne 0 ]; then
+            echo "WARNING: mcpchecker exited with code $CHECKER_EXIT"
+          fi
+          if [ ! -s "$RESULTS_DIR/mcpchecker-out.json" ]; then
+            echo "ERROR: mcpchecker produced no output"
+            exit 1
+          fi
 
           python3 - "$RESULTS_DIR/mcpchecker-out.json" "$SUBMISSION_NAME" "$REPORT_DIR" "$PIPELINE_RUN_ID" <<'AGGREGATE'
         import json, sys
@@ -535,7 +608,8 @@ spec:
             (Path(report_dir) / "report.json").write_text(json.dumps(report, indent=2))
             print(f"MCPChecker score: {score:.4f}, recommendation: {rec}")
         except Exception as e:
-            print(f"WARNING: MCPChecker aggregation failed: {e}")
+            print(f"ERROR: MCPChecker aggregation failed: {e}")
+            sys.exit(1)
         AGGREGATE
 
           cd "$PIPELINE_DIR"
@@ -587,6 +661,7 @@ spec:
 
           npm install --global agent-skills-eval 2>&1 | tail -3
 
+          ASE_FAILURES=0
           for i in $(seq 1 "$ITERATIONS"); do
             echo "--- ASE Iteration $i/$ITERATIONS ---"
             ASE_ARGS=("$SKILL_DIR" --baseline --layout iteration --report)
@@ -594,15 +669,19 @@ spec:
             ASE_ARGS+=(--target "$LLM_MODEL" --judge "$JUDGE_MODEL")
             ASE_ARGS+=(--concurrency "$CONCURRENCY" --workspace "$RESULTS_DIR/iteration-$i")
             ASE_ARGS+=(--api-key-env OPENAI_API_KEY)
-            agent-skills-eval "${ASE_ARGS[@]}" || true
+            agent-skills-eval "${ASE_ARGS[@]}" || ASE_FAILURES=$((ASE_FAILURES + 1))
           done
+          if [ "$ASE_FAILURES" -eq "$ITERATIONS" ]; then
+            echo "ERROR: All $ITERATIONS ASE iterations failed"
+            exit 1
+          fi
+          [ "$ASE_FAILURES" -gt 0 ] && echo "WARNING: $ASE_FAILURES/$ITERATIONS ASE iterations failed"
 
         # ---------- Harbor Engine ----------
         elif [ "$EVAL_ENGINE" = "harbor" ]; then
           echo "=== Harbor Evaluation (local) ==="
-          echo "NOTE: Harbor scaffold+build requires a container registry."
-          echo "For full Harbor evaluation, use the standalone ABEvalFlow pipeline."
-          echo "Attempting direct eval via task files..."
+          echo "NOTE: Local Harbor mode uses environment.type=local (no scaffold/build)."
+          echo "For full Harbor A/B with container registry, use the standalone pipeline."
 
           pip install --quiet --no-cache-dir harbor-bench 2>&1 | tail -3 || true
 
@@ -636,9 +715,14 @@ spec:
         with open(results_dir + "/config.yaml", "w") as f:
             yaml.dump(config, f, default_flow_style=False)
         HARBORCFG
-            harbor run -c "$RESULTS_DIR/config.yaml" -y 2>&1 || true
+            HARBOR_EXIT=0
+            harbor run -c "$RESULTS_DIR/config.yaml" -y 2>&1 || HARBOR_EXIT=$?
+            if [ "$HARBOR_EXIT" -ne 0 ]; then
+              echo "WARNING: Harbor exited with code $HARBOR_EXIT"
+            fi
           else
-            echo "WARNING: No task.toml found, skipping Harbor eval"
+            echo "ERROR: No task.toml found, cannot run Harbor eval"
+            exit 1
           fi
 
         else
@@ -658,7 +742,7 @@ spec:
         [ -n "$COMMIT_SHA" ] && ANALYZE_ARGS+=(--commit-sha "$COMMIT_SHA")
         [ -n "$PIPELINE_RUN_ID" ] && ANALYZE_ARGS+=(--pipeline-run-id "$PIPELINE_RUN_ID")
 
-        python scripts/analyze.py "${ANALYZE_ARGS[@]}" 2>&1 || echo "WARNING: analyze.py failed"
+        python scripts/analyze.py "${ANALYZE_ARGS[@]}" 2>&1
 
         # ---- Extract results for Tekton ----
         if [ -f "$REPORT_DIR/report.json" ]; then
@@ -677,7 +761,8 @@ spec:
           "$(results.control-mean-reward.path)" \
           "$(results.recommendation.path)"
         else
-          echo "WARNING: report.json not generated"
+          echo "ERROR: report.json not generated after evaluation"
+          exit 1
         fi
 
         echo "=== Evaluate phase complete ==="

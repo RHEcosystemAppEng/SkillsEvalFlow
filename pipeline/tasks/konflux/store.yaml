@@ -78,7 +78,7 @@ spec:
       description: MinIO bucket for report storage
     - name: pipeline-repo-url
       type: string
-      default: "https://github.com/ikrispin/ABEvalFlow.git"
+      default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
       description: URL of the pipeline repo containing scripts
     - name: pipeline-repo-revision
       type: string

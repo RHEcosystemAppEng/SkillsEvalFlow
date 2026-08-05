@@ -44,7 +44,7 @@ spec:
         recommendation. Set to 0.0 to pass whenever treatment >= control.
     - name: pipeline-repo-url
       type: string
-      default: "https://github.com/ikrispin/ABEvalFlow.git"
+      default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
       description: URL of the ABEvalFlow pipeline repository
     - name: pipeline-repo-revision
       type: string
@@ -79,7 +79,7 @@ spec:
         Degradation threshold as a ratio. Alert if current/previous < threshold.
     - name: openshift-console-url
       type: string
-      default: "https://console-openshift-console.apps.cn-ai-lab.2vn8.p1.openshiftapps.com"
+      default: ""
       description: Base URL for OpenShift console (for Slack message links)
     - name: enable-scorecard
       type: string

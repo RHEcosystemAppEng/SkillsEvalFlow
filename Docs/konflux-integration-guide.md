@@ -69,6 +69,26 @@ PIPELINE_REPO_REVISION: "main"
 | `harbor` | `SUBMISSION_*`, `LLM_*` |
 | `ase` | `SUBMISSION_*`, `LLM_*` |
 
+### Engine x Mode Validation Matrix
+
+| Engine | Local | Remote |
+|--------|-------|--------|
+| `a2a` | Supported | **Fully tested** (E2E on Konflux) |
+| `mcpchecker` | Supported | Supported (untested) |
+| `ase` | Supported (no external endpoint needed) | Not yet implemented |
+| `harbor` | Limited (local environment only, no scaffold/build) | Not supported (use standalone pipeline) |
+
+For `harbor` in Konflux, the local mode runs with `environment.type: local` which
+does not perform the full scaffold/build/eval cycle. For full Harbor A/B testing
+with container registry support, use the standalone ABEvalFlow pipeline on OpenShift.
+
+### Multi-component Applications
+
+The `parse-snapshot` task defaults to `.components[0]` from the Snapshot. For
+applications with multiple components, set the `component-name` parameter in
+parse-snapshot to target the specific component you want to evaluate. Failing
+to do so may result in evaluating the wrong component image.
+
 ## Evaluation Modes
 
 ### Local Mode (`EVAL_MODE=local`)

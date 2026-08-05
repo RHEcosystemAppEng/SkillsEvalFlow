@@ -28,7 +28,7 @@ spec:
       description: PipelineRun name for DB records
     - name: pipeline-repo-url
       type: string
-      default: "https://github.com/ikrispin/ABEvalFlow.git"
+      default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
     - name: pipeline-repo-revision
       type: string
       default: "main"
@@ -49,7 +49,7 @@ spec:
       default: "false"
     - name: llm-base-url
       type: string
-      default: "http://litellm.ab-eval-flow.svc:4000/v1"
+      default: ""
     - name: llm-model
       type: string
       default: "claude-sonnet"

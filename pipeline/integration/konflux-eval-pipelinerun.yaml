@@ -52,6 +52,15 @@ spec:
         default: "main"
         description: Git branch/tag/SHA of the submission repo
 
+      # === LLM credentials ===
+      - name: LLM_API_KEY
+        type: string
+        default: "sk-dummy"
+        description: >-
+          LLM API key. When using LiteLLM proxy (which handles real auth),
+          keep as "sk-dummy". For direct LLM API calls, set the real key
+          or provision llm-credentials Secret (preferred).
+
       # === Target endpoints (provide based on engine) ===
       - name: AGENT_ENDPOINT
         type: string
@@ -194,6 +203,9 @@ spec:
             value: $(params.PIPELINE_REPO_URL)
           - name: pipeline-repo-revision
             value: $(params.PIPELINE_REPO_REVISION)
+          # Security and quality are disabled in this reference pipeline.
+          # For a stricter gate, set security-scan-mode to "warn" or "block"
+          # and enable-quality-review to "true".
           - name: security-scan-mode
             value: disabled
           - name: submission-security-scan
@@ -246,6 +258,10 @@ spec:
             value: $(params.AGENT_ENDPOINT)
           - name: mcp-url
             value: $(params.MCP_URL)
+          - name: submission-repo-url
+            value: $(params.SUBMISSION_REPO_URL)
+          - name: submission-repo-revision
+            value: $(params.SUBMISSION_REVISION)
           - name: eval-mode
             value: $(params.EVAL_MODE)
           - name: workload-cluster-url

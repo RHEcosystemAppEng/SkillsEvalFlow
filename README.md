@@ -110,8 +110,8 @@ agentic_eval_flow/
 | Repository | Purpose |
 |---|---|
 | [skill-submissions](https://github.com/RHEcosystemAppEng/skill-submissions) | Submission intake — users push skills, MCP evals, and agent evals here |
-| [skills_eval_corrections](https://github.com/RHEcosystemAppEng/skills_eval_corrections) | Harbor fork with OpenShift backend for Agentic Eval Flow |
-| [All-Hands-AI/openhands-agent-monitor](https://github.com/All-Hands-AI/openhands-agent-monitor) | Harbor upstream — agent evaluation framework |
+| [laude-institute/harbor](https://github.com/laude-institute/harbor) | Harbor upstream (PyPI `harbor==0.20.0`) — classic A/B uses stock Harbor + OpenShift custom env |
+| [opendatahub-io/agent-eval-harness](https://github.com/opendatahub-io/agent-eval-harness) | AEH — KubernetesEnvironment base for the OpenShift custom env plugin |
 | [cisco-ai-defense/skill-scanner](https://github.com/cisco-ai-defense/skill-scanner) | Security scanner for prompt injection and data exfiltration detection |
 
 ## Evaluation Engines

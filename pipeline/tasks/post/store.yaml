@@ -130,7 +130,7 @@ spec:
         export PYTHONPATH="$PIPELINE_DIR"
 
         # --- 2. Install dependencies ---
-        pip install --quiet --no-cache-dir pydantic sqlalchemy "psycopg[binary]" "tenacity>=8.2" pyyaml mlflow
+        pip install --quiet --no-cache-dir pydantic sqlalchemy "psycopg[binary]" "tenacity>=8.2" pyyaml mlflow opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-grpc
 
         # --- 3. Run store script ---
         REPORT_DIR="$(workspaces.source.path)/reports/$(params.submission-name)"

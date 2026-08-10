@@ -92,6 +92,12 @@ spec:
         Certification profile name (e.g., 'skill', 'agent', 'mcp_server', 'plugin').
         Provides artifact-type-specific check defaults. If empty, uses hardcoded defaults
         unless submission's metadata.yaml specifies certification_policy.
+    - name: otel-exporter-endpoint
+      type: string
+      default: ""
+      description: >-
+        OTEL collector OTLP endpoint (e.g. http://otel-collector:4317).
+        Tracing activates only when set.
   workspaces:
     - name: source
       description: Workspace containing the evaluation results and report output
@@ -282,6 +288,10 @@ spec:
               name: compass-facts-api
               key: token
               optional: true
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "$(params.otel-exporter-endpoint)"
+        - name: OTEL_SERVICE_NAME
+          value: "abevalflow"
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
@@ -300,7 +310,7 @@ spec:
         PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
         cd "$PIPELINE_DIR"
         export PYTHONPATH="$PIPELINE_DIR"
-        pip install --quiet --no-cache-dir pydantic pyyaml
+        pip install --quiet --no-cache-dir pydantic pyyaml opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-grpc
 
         SUBMISSION_DIR="$(workspaces.source.path)/submissions/$(params.submission-name)"
         RESULTS_DIR="$(workspaces.source.path)/eval-results/$(params.submission-name)"

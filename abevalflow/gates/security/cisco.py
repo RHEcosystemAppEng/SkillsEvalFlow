@@ -7,6 +7,7 @@ from pathlib import Path
 from abevalflow.gates.base import GateResult
 from abevalflow.gates.security import register_security_gate
 from abevalflow.gates.security.base import SecurityGate
+from abevalflow.observability.decorators import timed_gate
 from abevalflow.schemas import GatePolicy
 
 
@@ -23,6 +24,7 @@ class CiscoGate(SecurityGate):
     name = "cisco"
     scan_filename = "security-scan.json"
 
+    @timed_gate
     def evaluate(
         self,
         reports_dir: Path,

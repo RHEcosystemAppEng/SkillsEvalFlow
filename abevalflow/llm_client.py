@@ -70,43 +70,59 @@ def chat_completion_with_usage(
 
     Raises on API errors so callers can handle retries at a higher level.
     """
+    from abevalflow.observability.otel import get_tracer
+
+    tracer = get_tracer("abevalflow.llm")
     client = get_client()
     resolved_model = model or get_model()
 
-    logger.info(
-        "chat_completion → model=%s, messages=%d, temperature=%.1f",
-        resolved_model,
-        len(messages),
-        temperature,
-    )
+    with tracer.start_as_current_span(
+        "llm.chat_completion",
+        attributes={
+            "llm.model": resolved_model,
+            "llm.temperature": temperature,
+            "llm.max_tokens": max_tokens,
+            "llm.messages_count": len(messages),
+        },
+    ) as span:
+        logger.info(
+            "chat_completion → model=%s, messages=%d, temperature=%.1f",
+            resolved_model,
+            len(messages),
+            temperature,
+        )
 
-    response = client.chat.completions.create(
-        model=resolved_model,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        **kwargs,
-    )
+        response = client.chat.completions.create(
+            model=resolved_model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **kwargs,
+        )
 
-    content = response.choices[0].message.content or ""
-    usage = response.usage
-    prompt_tokens = usage.prompt_tokens if usage else 0
-    completion_tokens = usage.completion_tokens if usage else 0
+        content = response.choices[0].message.content or ""
+        usage = response.usage
+        prompt_tokens = usage.prompt_tokens if usage else 0
+        completion_tokens = usage.completion_tokens if usage else 0
 
-    logger.info(
-        "chat_completion ← %d chars, tokens: %d prompt + %d completion",
-        len(content),
-        prompt_tokens,
-        completion_tokens,
-    )
+        span.set_attribute("llm.prompt_tokens", prompt_tokens)
+        span.set_attribute("llm.completion_tokens", completion_tokens)
+        span.set_attribute("llm.total_tokens", prompt_tokens + completion_tokens)
 
-    return LLMResult(
-        content=content,
-        prompt_tokens=prompt_tokens,
-        completion_tokens=completion_tokens,
-        total_tokens=prompt_tokens + completion_tokens,
-        model=resolved_model,
-    )
+        logger.info(
+            "chat_completion ← %d chars, tokens: %d prompt + %d completion",
+            len(content),
+            prompt_tokens,
+            completion_tokens,
+        )
+
+        return LLMResult(
+            content=content,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=prompt_tokens + completion_tokens,
+            model=resolved_model,
+        )
 
 
 def chat_completion(

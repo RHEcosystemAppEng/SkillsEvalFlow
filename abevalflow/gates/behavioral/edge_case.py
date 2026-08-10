@@ -13,6 +13,7 @@ from pathlib import Path
 from abevalflow.gates.base import GateMode, GateResult, GateType
 from abevalflow.gates.behavioral import register_behavioral_gate
 from abevalflow.gates.behavioral.base import BehavioralGate
+from abevalflow.observability.decorators import timed_gate
 from abevalflow.schemas import GatePolicy
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ class EdgeCaseGate(BehavioralGate):
 
     name = "edge-case"
 
+    @timed_gate
     def evaluate(
         self,
         reports_dir: Path,

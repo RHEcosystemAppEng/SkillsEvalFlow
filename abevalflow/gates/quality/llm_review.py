@@ -9,6 +9,7 @@ from pathlib import Path
 from abevalflow.gates.base import Finding, GateMode, GateResult, GateType, Severity
 from abevalflow.gates.quality import register_quality_gate
 from abevalflow.gates.quality.base import QualityGate
+from abevalflow.observability.decorators import timed_gate
 from abevalflow.schemas import GatePolicy
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ class LLMReviewGate(QualityGate):
 
     name = "llm-review"
 
+    @timed_gate
     def evaluate(
         self,
         workspace_root: Path,

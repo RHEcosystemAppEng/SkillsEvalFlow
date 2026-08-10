@@ -81,6 +81,10 @@ spec:
       type: string
       default: "main"
       description: Branch or SHA of the pipeline repo to use for scripts
+    - name: mlflow-tracking-uri
+      type: string
+      default: ""
+      description: MLflow tracking URI. Observer activates only when set.
   workspaces:
     - name: source
       description: Shared workspace containing evaluation artifacts
@@ -94,6 +98,8 @@ spec:
               name: ab-eval-db-credentials
               key: database-url
               optional: true
+        - name: MLFLOW_TRACKING_URI
+          value: "$(params.mlflow-tracking-uri)"
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
@@ -124,7 +130,7 @@ spec:
         export PYTHONPATH="$PIPELINE_DIR"
 
         # --- 2. Install dependencies ---
-        pip install --quiet --no-cache-dir pydantic sqlalchemy "psycopg[binary]" "tenacity>=8.2" pyyaml
+        pip install --quiet --no-cache-dir pydantic sqlalchemy "psycopg[binary]" "tenacity>=8.2" pyyaml mlflow
 
         # --- 3. Run store script ---
         REPORT_DIR="$(workspaces.source.path)/reports/$(params.submission-name)"

@@ -5,17 +5,17 @@
 # in a Kubernetes/OpenShift environment.
 #
 # Build (from repo root — COPY abevalflow requires repo-root context):
-#   podman build -t quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3 \
+#   podman build -t quay.io/ecosystem-appeng/agent-eval-harness:v1.0.4 \
 #     --build-arg AEH_SHA=<commit-sha> \
 #     -f containers/agent-eval-harness/Containerfile .
 #
 # Required build args (PIN BEFORE BUILDING):
 #   AEH_SHA: Commit SHA of agent-eval-harness repo (7-40 hex chars; no branch/HEAD)
 #
-# Published smoke-tested image: quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3
-# Rebuilds from this Containerfile must pin AEH_SHA to the same upstream commit
-# used for that tag (inspect image labels / build logs) — do not leave the
-# REPLACE_WITH_COMMIT_SHA placeholder.
+# Published smoke-tested image: quay.io/ecosystem-appeng/agent-eval-harness:v1.0.4
+# (AEH upstream 1.30.1 / 75f7188299f6594425175ef71ec41a7a6a6f6ffd — rebuild with
+# that SHA or a newer main tip). Do not leave REPLACE_WITH_COMMIT_SHA.
+
 #
 # Note: Uses official Harbor from PyPI (>=0.13.0), not the skills_eval_corrections fork.
 # The fork's OpenShift backend is only needed for Harbor engine evaluations, not AEH.
@@ -32,7 +32,8 @@ LABEL name="agent-eval-harness" \
       vendor="Red Hat Ecosystem App Engineering" \
       description="Agent-Eval-Harness runner for ABEvalFlow pipeline" \
       io.k8s.display-name="AEH Runner" \
-      io.openshift.tags="abevalflow,evaluation,agent-eval-harness"
+      io.openshift.tags="abevalflow,evaluation,agent-eval-harness" \
+      abevalflow.aeh.sha="${AEH_SHA}"
 
 USER 0
 
@@ -74,13 +75,18 @@ COPY --chown=1001:0 abevalflow /opt/agent-eval-harness/abevalflow
 # - Anthropic SDK with Vertex AI support
 # - Jinja2 for template rendering
 # - SciPy for statistical functions
+# - mlflow[genai] + pandas for post-evaluate AEH MLflow logging/traces
+#   (full mlflow — skinny breaks async trace export / AsyncExportQueue).
+#   evaluate.yaml still pip-installs to /tmp as a fallback for older images.
 RUN pip install --no-cache-dir \
     "harbor>=0.13.0" \
     "kubernetes>=32.0.0" \
     pyyaml \
     "anthropic[vertex]" \
     jinja2 \
-    scipy
+    scipy \
+    "mlflow[genai]" \
+    pandas
 
 # Set up environment
 ENV PYTHONPATH=/opt/agent-eval-harness \

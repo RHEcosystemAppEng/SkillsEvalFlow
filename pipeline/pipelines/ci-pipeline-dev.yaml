@@ -167,6 +167,30 @@ spec:
       type: string
       default: "harbor"
       description: AEH execution backend (harbor, vanilla)
+
+    # AEH MLflow (optional post-evaluate logging)
+    - name: enable-mlflow
+      type: string
+      default: "false"
+      description: When true and mlflow-tracking-uri is set, log AEH results to MLflow
+    - name: mlflow-tracking-uri
+      type: string
+      default: ""
+      description: MLflow tracking server URI (e.g. http://mlflow.ab-eval-flow.svc:5000)
+    - name: enable-aeh-regression-check
+      type: string
+      default: "true"
+      description: Advisory AEH score.py regression after eval (does not fail the run)
+    - name: aeh-baseline-run-id
+      type: string
+      default: ""
+      description: Optional prior AEH run-id for regression --baseline
+    - name: enable-aeh-eval-check
+      type: string
+      default: "false"
+      description: >-
+        Advisory AEH harness inventory in test phase (does not fail the run).
+        Defaults off to avoid an extra AEH image pull; set true to opt in.
     # Security scanning
     - name: security-scan
       type: string
@@ -290,6 +314,10 @@ spec:
           value: $(tasks.prepare.results.security-scan-use-llm)
         - name: enable-quality-review
           value: $(params.enable-test-quality-review)
+        - name: enable-aeh-eval-check
+          value: $(params.enable-aeh-eval-check)
+        - name: aeh-image
+          value: $(params.aeh-image)
         - name: llm-base-url
           value: $(params.llm-base-url)
         - name: llm-model
@@ -393,6 +421,14 @@ spec:
           value: $(params.aeh-image)
         - name: aeh-runner
           value: $(params.aeh-runner)
+        - name: enable-mlflow
+          value: $(params.enable-mlflow)
+        - name: mlflow-tracking-uri
+          value: $(params.mlflow-tracking-uri)
+        - name: enable-aeh-regression-check
+          value: $(params.enable-aeh-regression-check)
+        - name: aeh-baseline-run-id
+          value: $(params.aeh-baseline-run-id)
       workspaces:
         - name: source
           workspace: shared-workspace

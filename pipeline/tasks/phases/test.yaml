@@ -51,6 +51,17 @@ spec:
       type: string
       default: "false"
       description: Submission's skip_quality_review setting from metadata.yaml
+    - name: enable-aeh-eval-check
+      type: string
+      default: "false"
+      description: >-
+        When true and eval-engine=aeh, run AEH harness inventory (advisory —
+        does not fail the test phase). Defaults off to avoid an extra AEH
+        image pull in the test phase; set true to opt in.
+    - name: aeh-image
+      type: string
+      default: "quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3"
+      description: AEH image providing skills/eval-check/scripts/harness_inventory.py
     - name: llm-base-url
       type: string
       default: "http://litellm.ab-eval-flow.svc:4000/v1"
@@ -459,6 +470,35 @@ spec:
           echo -n "$PASSED" > "$(results.quality-passed.path)"
           echo "Quality review: passed=$PASSED recommendation=$REC"
         fi
+
+    # Step 5b: AEH harness inventory (advisory eval-check Step 1)
+    - name: aeh-eval-check
+      when:
+        - input: "$(params.eval-engine)"
+          operator: in
+          values: ["aeh"]
+      image: $(params.aeh-image)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "=== TEST PHASE: AEH eval-check (advisory inventory) ==="
+
+        if [ "$(params.enable-aeh-eval-check)" != "true" ]; then
+          echo "Skipping AEH eval-check (enable-aeh-eval-check=$(params.enable-aeh-eval-check))"
+          exit 0
+        fi
+
+        PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
+        SUBMISSION_PATH="$(workspaces.source.path)/submissions/$(params.submission-dir)"
+        OUT_DIR="$(workspaces.source.path)/reports/$(params.submission-name)"
+        mkdir -p "$OUT_DIR"
+
+        export PYTHONPATH="$PIPELINE_DIR:${PYTHONPATH:-}"
+        python "$PIPELINE_DIR/scripts/run_aeh_eval_check.py" \
+          --enabled true \
+          --root "$SUBMISSION_PATH" \
+          --output "$OUT_DIR/harness-inventory.yaml" \
+          2>&1 || echo "Warning: AEH eval-check failed to run (non-blocking)"
 
     # Step 6: Finalize results and write metrics checkpoint
     - name: finalize

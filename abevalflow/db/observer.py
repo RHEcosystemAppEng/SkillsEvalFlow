@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from pathlib import Path
 from typing import Protocol
 
 from abevalflow.report import AnalysisResult
@@ -46,7 +47,19 @@ def discover_observers() -> list[ResultsObserver]:
     observers: list[ResultsObserver] = []
 
     if os.environ.get("MLFLOW_TRACKING_URI"):
-        logger.info("MLflow observer requested but not yet implemented — skipping")
+        try:
+            from abevalflow.observability.mlflow_observer import MLflowObserver
+
+            prefix = os.environ.get("MLFLOW_EXPERIMENT_PREFIX", "abevalflow")
+            observers.append(
+                MLflowObserver(
+                    tracking_uri=os.environ["MLFLOW_TRACKING_URI"],
+                    experiment_prefix=prefix,
+                )
+            )
+            logger.info("MLflow observer enabled (uri=%s)", os.environ["MLFLOW_TRACKING_URI"])
+        except ImportError:
+            logger.warning("MLflow observer requested but mlflow package not installed — skipping")
 
     if os.environ.get("LANGFUSE_PUBLIC_KEY"):
         logger.info("Langfuse observer requested but not yet implemented — skipping")
@@ -58,10 +71,23 @@ def notify_observers(
     observers: list[ResultsObserver],
     result: AnalysisResult,
     run_id: uuid.UUID,
+    report_dir: Path | None = None,
+    pipeline_run_id: str | None = None,
 ) -> None:
     """Invoke all observers, catching and logging any errors."""
+    kwargs: dict = {}
+    if report_dir is not None:
+        kwargs["report_dir"] = report_dir
+    if pipeline_run_id is not None:
+        kwargs["pipeline_run_id"] = pipeline_run_id
+
     for obs in observers:
         try:
+            if kwargs:
+                obs.on_evaluation_stored(result, run_id, **kwargs)
+            else:
+                obs.on_evaluation_stored(result, run_id)
+        except TypeError:
             obs.on_evaluation_stored(result, run_id)
         except Exception:
             logger.warning(

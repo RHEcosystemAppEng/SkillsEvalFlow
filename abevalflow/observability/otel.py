@@ -17,10 +17,7 @@ _provider_initialized = False
 
 def is_otel_enabled() -> bool:
     """Check whether OTEL tracing should be active."""
-    return bool(
-        os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
-        or os.environ.get("MLFLOW_TRACKING_URI")
-    )
+    return bool(os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or os.environ.get("MLFLOW_TRACKING_URI"))
 
 
 def setup_tracer_provider() -> None:
@@ -61,9 +58,11 @@ def setup_tracer_provider() -> None:
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-        resource = Resource.create({
-            "service.name": os.environ.get("OTEL_SERVICE_NAME", "abevalflow"),
-        })
+        resource = Resource.create(
+            {
+                "service.name": os.environ.get("OTEL_SERVICE_NAME", "abevalflow"),
+            }
+        )
         provider = TracerProvider(resource=resource)
         exporter = OTLPSpanExporter(endpoint=otel_endpoint)
         provider.add_span_processor(BatchSpanProcessor(exporter))

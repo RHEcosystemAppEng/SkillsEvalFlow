@@ -256,6 +256,24 @@ def main() -> int:
 
     metadata = load_metadata(args.submission_path)
     red_team = metadata.get("red_team") or {}
+
+    if red_team.get("enabled") is False:
+        print("Skipping: red_team.enabled=false in submission metadata")
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(
+                {
+                    "framework": "pyrit-crescendo",
+                    "skipped": True,
+                    "reason": "red_team.enabled=false",
+                    "crescendo_results": [],
+                    "summary": {"objectives": 0, "achieved": 0},
+                },
+                indent=2,
+            )
+        )
+        return 0
+
     purpose = red_team.get("purpose") or metadata.get("description") or "AI agent under evaluation."
     policy = red_team.get("policy") or DEFAULT_POLICY
     auth_context = red_team.get("auth_context") or ""

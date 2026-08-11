@@ -88,7 +88,7 @@ spec:
       description: Enable red team adversarial evaluation (Promptfoo + PyRIT Crescendo in full mode)
     - name: red-team-mode
       type: string
-      default: "full"
+      default: "smoke"
       description: >-
         "smoke" generates a quick Promptfoo suite (~25 tests). "full" runs
         comprehensive Promptfoo then PyRIT Crescendo.

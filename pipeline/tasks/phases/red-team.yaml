@@ -286,6 +286,16 @@ spec:
         CRESCENDO_EXIT=$?
         set -e
 
+        if [ "$CRESCENDO_EXIT" -ne 0 ]; then
+          echo "WARNING: Crescendo exited with code $CRESCENDO_EXIT"
+          if [ ! -f "$REPORT_DIR/pyrit-crescendo-results.json" ]; then
+            echo "ERROR: Crescendo failed and produced no results"
+            echo -n "false" > "$(results.redteam-passed.path)"
+            echo -n "0" > "$(results.redteam-findings.path)"
+            exit 1
+          fi
+        fi
+
         PF_FINDINGS=0
         if [ -f "$REPORT_DIR/.promptfoo-findings" ]; then
           PF_FINDINGS=$(cat "$REPORT_DIR/.promptfoo-findings")

@@ -14,7 +14,7 @@ parse-snapshot → prepare → test → [red-team] → evaluate → analyze-scor
 
 The `red-team` task is opt-in (controlled by `ENABLE_RED_TEAM` parameter, default `false`).
 
-These tasks handlePLACEHOLDER the entire evaluation lifecycle:
+These tasks handle the entire evaluation lifecycle:
 
 | Task | Purpose |
 |------|---------|

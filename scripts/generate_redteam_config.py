@@ -143,7 +143,6 @@ def generate_config(
     target_url: str,
     llm_base_url: str,
     llm_model: str,
-    llm_api_key: str,
     mode: str,
 ) -> dict:
     """Generate the full Promptfoo config."""
@@ -165,8 +164,8 @@ def generate_config(
         judge_config = {
             "id": f"openai:chat:{llm_model}",
             "config": {
-                "apiBaseUrl": llm_base_url.rstrip("/v1").rstrip("/"),
-                "apiKey": llm_api_key or "sk-dummy",
+                "apiBaseUrl": llm_base_url.removesuffix("/v1").rstrip("/"),
+                "apiKey": "{{env:OPENAI_API_KEY}}",
             },
         }
 
@@ -193,10 +192,8 @@ def main():
     parser = argparse.ArgumentParser(description="Generate Promptfoo red team config")
     parser.add_argument("--submission-path", required=True, type=Path)
     parser.add_argument("--eval-engine", required=True)
-    parser.add_argument("--target-url", required=True,
-                        help="Target endpoint URL (A2A agent, MCP server, or HTTP API)")
-    # Keep --agent-endpoint as deprecated alias for backwards compatibility
-    parser.add_argument("--agent-endpoint", dest="target_url_compat", default=None)
+    parser.add_argument("--target-url", default=None, help="Target endpoint URL (A2A agent, MCP server, or HTTP API)")
+    parser.add_argument("--agent-endpoint", default=None, help="(Deprecated) Alias for --target-url")
     parser.add_argument("--llm-base-url", required=True)
     parser.add_argument("--llm-model", default="claude-sonnet")
     parser.add_argument("--llm-api-key", default="")
@@ -204,9 +201,9 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
 
-    target_url = args.target_url
-    if not target_url and args.target_url_compat:
-        target_url = args.target_url_compat
+    target_url = args.target_url or args.agent_endpoint
+    if not target_url:
+        parser.error("one of --target-url or --agent-endpoint is required")
 
     config = generate_config(
         submission_path=args.submission_path,
@@ -214,7 +211,6 @@ def main():
         target_url=target_url,
         llm_base_url=args.llm_base_url,
         llm_model=args.llm_model,
-        llm_api_key=args.llm_api_key,
         mode=args.mode,
     )
 

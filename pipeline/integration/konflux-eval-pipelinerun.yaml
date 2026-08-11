@@ -111,7 +111,7 @@ spec:
         description: "Enable red team adversarial evaluation (runs Promptfoo against the target)"
       - name: RED_TEAM_MODE
         type: string
-        default: "full"
+        default: "smoke"
         description: >-
           "smoke" generates a quick suite from metadata (~25 tests, basic strategy, ~2 min).
           "full" generates comprehensive attacks with all strategies (~1750 tests, ~90 min).
@@ -263,6 +263,8 @@ spec:
             value: $(tasks.prepare.results.submission-name)
           - name: agent-endpoint
             value: $(params.AGENT_ENDPOINT)
+          - name: mcp-url
+            value: $(params.MCP_URL)
           - name: red-team-mode
             value: $(params.RED_TEAM_MODE)
           - name: llm-api-base

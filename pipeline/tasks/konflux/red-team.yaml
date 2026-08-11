@@ -25,12 +25,16 @@ spec:
     - name: agent-endpoint
       type: string
       default: ""
-      description: Target endpoint URL (A2A agent, MCP server, or HTTP API)
+      description: Target endpoint URL (A2A agent or HTTP API)
+    - name: mcp-url
+      type: string
+      default: ""
+      description: "MCP server URL (used when eval-engine=mcpchecker)"
     - name: red-team-mode
       type: string
-      default: "full"
+      default: "smoke"
       description: >-
-        "smoke" generates a quick suite from metadata (~25 tests, basic strategy, ~2 min).
+        "smoke" generates a quick Promptfoo suite (~25 tests, basic strategy, ~2 min).
         "full" generates comprehensive attacks with all strategies (~1750 tests, ~90 min).
     - name: llm-api-base
       type: string
@@ -82,8 +86,11 @@ spec:
         fi
 
         ENDPOINT="$(params.agent-endpoint)"
+        if [ -z "$ENDPOINT" ] && [ "$EVAL_ENGINE" = "mcpchecker" ]; then
+          ENDPOINT="$(params.mcp-url)"
+        fi
         if [ -z "$ENDPOINT" ]; then
-          echo "Skipping: no agent-endpoint provided"
+          echo "Skipping: no target endpoint provided (agent-endpoint and mcp-url both empty)"
           echo -n "true" > "$(results.redteam-passed.path)"
           echo -n "0" > "$(results.redteam-findings.path)"
           exit 0
@@ -117,6 +124,9 @@ spec:
         fi
 
         ENDPOINT="$(params.agent-endpoint)"
+        if [ -z "$ENDPOINT" ] && [ "$EVAL_ENGINE" = "mcpchecker" ]; then
+          ENDPOINT="$(params.mcp-url)"
+        fi
         if [ -z "$ENDPOINT" ]; then
           echo "Skipped (no endpoint)"
           exit 0
@@ -150,6 +160,14 @@ spec:
           value: "true"
         - name: PROMPTFOO_DISABLE_TELEMETRY
           value: "1"
+        - name: OPENAI_API_KEY
+          value: "$(params.llm-api-key)"
+        - name: PROMPTFOO_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: promptfoo-cloud-credentials
+              key: api-key
+              optional: true
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
@@ -162,6 +180,9 @@ spec:
         fi
 
         ENDPOINT="$(params.agent-endpoint)"
+        if [ -z "$ENDPOINT" ] && [ "$EVAL_ENGINE" = "mcpchecker" ]; then
+          ENDPOINT="$(params.mcp-url)"
+        fi
         if [ -z "$ENDPOINT" ]; then
           echo "Skipped (no endpoint)"
           exit 0
@@ -173,7 +194,9 @@ spec:
 
         if [ ! -f "$CONFIG_DIR/promptfooconfig.yaml" ]; then
           echo "ERROR: Config not found at $CONFIG_DIR/promptfooconfig.yaml"
-          exit 0
+          echo -n "false" > "$(results.redteam-passed.path)"
+          echo -n "0" > "$(results.redteam-findings.path)"
+          exit 1
         fi
 
         cd "$CONFIG_DIR"
@@ -189,21 +212,31 @@ spec:
         fi
 
         echo "Generating and evaluating attacks..."
-        set +e
+        GEN_EXIT=0
         promptfoo redteam generate \
           -c promptfooconfig.yaml \
           --no-cache \
           -o redteam-generated.yaml \
-          2>&1 | tail -20
+          2>&1 | tail -20 || GEN_EXIT=$?
 
+        if [ "$GEN_EXIT" -ne 0 ] || [ ! -f "redteam-generated.yaml" ]; then
+          echo "ERROR: Promptfoo generate failed (exit=$GEN_EXIT)"
+          echo -n "false" > "$(results.redteam-passed.path)"
+          echo -n "0" > "$(results.redteam-findings.path)"
+          exit 1
+        fi
+
+        EVAL_EXIT=0
         promptfoo eval \
           -c redteam-generated.yaml \
           --no-cache \
           -j "$CONCURRENCY" \
           -o "$REPORT_DIR/redteam-results.json" \
-          2>&1
-        EVAL_EXIT=$?
-        set -e
+          2>&1 || EVAL_EXIT=$?
+
+        if [ "$EVAL_EXIT" -ne 0 ]; then
+          echo "WARNING: Promptfoo eval exited with code $EVAL_EXIT"
+        fi
 
         FINDINGS=0
         PASSED="true"
@@ -216,6 +249,11 @@ spec:
             const failed=r.filter(t=>t.gradingResult&&!t.gradingResult.pass&&!(t.gradingResult.reason||'').includes('fetch failed'));
             console.log(failed.length);
           " 2>/dev/null || echo "0")
+        else
+          echo "ERROR: Promptfoo eval produced no results file"
+          echo -n "false" > "$(results.redteam-passed.path)"
+          echo -n "0" > "$(results.redteam-findings.path)"
+          exit 1
         fi
 
         if [ "$FINDINGS" -gt "0" ]; then
@@ -226,4 +264,4 @@ spec:
         echo -n "$FINDINGS" > "$(results.redteam-findings.path)"
 
         echo ""
-        echo "Red team complete: $FINDINGS findings, passed=$PASSED"
+        echo "Promptfoo complete: $FINDINGS findings, passed=$PASSED"

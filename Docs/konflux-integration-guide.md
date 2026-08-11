@@ -6,13 +6,15 @@ Bundles that can evaluate A2A agents, MCP servers, and skills.
 
 ## Architecture
 
-ABEvalFlow publishes **7 core tasks** as Tekton Bundles:
+ABEvalFlow publishes **8 core tasks** as Tekton Bundles:
 
 ```
-parse-snapshot → prepare → test → evaluate → analyze-scorecard → store → emit-result
+parse-snapshot → prepare → test → [red-team] → evaluate → analyze-scorecard → store → emit-result
 ```
 
-These tasks handle the entire evaluation lifecycle:
+The `red-team` task is opt-in (controlled by `ENABLE_RED_TEAM` parameter, default `false`).
+
+These tasks handlePLACEHOLDER the entire evaluation lifecycle:
 
 | Task | Purpose |
 |------|---------|
@@ -320,6 +322,7 @@ The core tasks are published as Tekton Bundles to Quay.io:
 | `quay.io/rh-ee-ikrispin/abevalflow-task-evaluate:0.1` | evaluate |
 | `quay.io/rh-ee-ikrispin/abevalflow-task-analyze-scorecard:0.1` | analyze-scorecard |
 | `quay.io/rh-ee-ikrispin/abevalflow-task-store:0.1` | store |
+| `quay.io/rh-ee-ikrispin/abevalflow-task-red-team:0.1` | red-team (opt-in) |
 | `quay.io/rh-ee-ikrispin/abevalflow-task-emit-result:0.1` | emit-result |
 
 To rebuild bundles after editing task YAML:

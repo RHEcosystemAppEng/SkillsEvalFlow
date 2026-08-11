@@ -54,7 +54,7 @@ not re-scraping CI environment variables.
 | `eval_run_id` | — | no | — | Eval batch/case id; MLflow run name / tag |
 | `harness_fingerprint` | `harness_content_sha` | no | `fullsend.harness.content_sha` (runtime-specific attr ok) | Config content hash |
 | `forge_platform` | `forge_platform` | no | runtime-specific | `github` \| `gitlab` \| `bitbucket` \| `forgejo` \| … |
-| `eval_engine` | — | yes on Provenance (default `harbor`) | — | `harbor` \| `ase` \| `aeh` \| `both` \| … |
+| `eval_engine` | — | yes on Provenance (default `harbor`) | — | `harbor` \| `ase` \| `a2a` \| `aeh` \| `mcpchecker` \| `both` |
 | `treatment_image_ref` | — | no | — | Image digest refs |
 | `control_image_ref` | — | no | — | |
 | `harbor_fork_revision` | — | no | — | |

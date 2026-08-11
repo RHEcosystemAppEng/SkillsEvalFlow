@@ -357,6 +357,8 @@ class TestBuildAnalysis:
     def test_provenance_forge_join_fields(self, results_dir: Path):
         prov = Provenance(
             commit_sha="abc123",
+            pipeline_run_url="https://ci.example.com/runs/42",
+            ref_name="feat/thing",
             repository_url="https://github.com/o/r",
             change_id="7",
             trace_id="4bf92a",
@@ -367,6 +369,8 @@ class TestBuildAnalysis:
         result = build_analysis(results_dir, "my-submission", provenance=prov)
         assert result.provenance.repository_url == "https://github.com/o/r"
         assert result.provenance.change_id == "7"
+        assert result.provenance.pipeline_run_url == "https://ci.example.com/runs/42"
+        assert result.provenance.ref_name == "feat/thing"
         assert result.provenance.harness_fingerprint == "deadbeef"
         assert result.provenance.forge_platform == "github"
 

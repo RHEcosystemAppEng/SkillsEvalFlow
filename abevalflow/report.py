@@ -118,12 +118,20 @@ class Provenance(BaseModel):
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     commit_sha: str | None = None
     pipeline_run_id: str | None = None
+    pipeline_run_url: str | None = Field(
+        default=None,
+        description="CI pipeline run URL (convenience; complements pipeline_run_id)",
+    )
+    ref_name: str | None = Field(
+        default=None,
+        description="Branch or tag short name (OTel vcs.ref.head.name)",
+    )
     treatment_image_ref: str | None = None
     control_image_ref: str | None = None
     harbor_fork_revision: str | None = None
     eval_engine: str = Field(
         default="harbor",
-        description="Evaluation engine used: 'harbor', 'ase', 'aeh', or 'both'",
+        description="Evaluation engine used: 'harbor', 'ase', 'a2a', 'aeh', 'mcpchecker', or 'both'",
     )
     repository_url: str | None = Field(
         default=None,

@@ -633,6 +633,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--commit-sha", default=None)
     parser.add_argument("--pipeline-run-id", default=None)
+    parser.add_argument("--pipeline-run-url", default=None, help="CI pipeline run URL")
+    parser.add_argument("--ref-name", default=None, help="Branch or tag short name")
     parser.add_argument("--treatment-image-ref", default=None)
     parser.add_argument("--control-image-ref", default=None)
     parser.add_argument("--harbor-fork-revision", default=None)
@@ -666,7 +668,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--eval-engine",
         type=str,
-        choices=["harbor", "ase", "both", "a2a", "aeh"],
+        choices=["harbor", "ase", "both", "a2a", "aeh", "mcpchecker"],
         default="harbor",
         help="Evaluation engine used (for provenance tagging and analysis path)",
     )
@@ -715,6 +717,8 @@ def main(argv: list[str] | None = None) -> int:
     provenance = Provenance(
         commit_sha=args.commit_sha,
         pipeline_run_id=args.pipeline_run_id,
+        pipeline_run_url=args.pipeline_run_url,
+        ref_name=args.ref_name,
         treatment_image_ref=args.treatment_image_ref,
         control_image_ref=args.control_image_ref,
         harbor_fork_revision=args.harbor_fork_revision,

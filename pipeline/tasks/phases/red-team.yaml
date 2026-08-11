@@ -30,7 +30,7 @@ spec:
       description: Target endpoint URL (A2A agent, MCP server, or HTTP API)
     - name: red-team-mode
       type: string
-      default: "full"
+      default: "smoke"
       description: >-
         "smoke" generates a quick Promptfoo suite (~25 tests, basic strategy, ~2 min).
         "full" runs comprehensive Promptfoo then PyRIT Crescendo (~90+ min).

@@ -82,6 +82,24 @@ spec:
       type: string
       default: "true"
       description: Enable unified scorecard aggregation
+    - name: enable-red-team
+      type: string
+      default: "false"
+      description: Enable red team adversarial evaluation (Promptfoo + PyRIT Crescendo in full mode)
+    - name: red-team-mode
+      type: string
+      default: "full"
+      description: >-
+        "smoke" generates a quick Promptfoo suite (~25 tests). "full" runs
+        comprehensive Promptfoo then PyRIT Crescendo.
+    - name: red-team-concurrency
+      type: string
+      default: "12"
+      description: Number of parallel Promptfoo evaluations
+    - name: red-team-crescendo-max-turns
+      type: string
+      default: "7"
+      description: Max turns per PyRIT Crescendo objective (full mode only)
     - name: agent-type
       type: string
       default: "api"
@@ -329,10 +347,52 @@ spec:
           workspace: shared-workspace
 
     # ======================================================================
+    # PHASE 2.5: RED TEAM (adversarial testing, optional)
+    # ======================================================================
+    - name: red-team
+      runAfter: ["test"]
+      when:
+        - input: $(params.enable-red-team)
+          operator: in
+          values: ["true"]
+      taskRef:
+        name: red-team
+      params:
+        - name: eval-engine
+          value: $(params.eval-engine)
+        - name: submission-dir
+          value: $(params.submission-dir)
+        - name: submission-name
+          value: $(tasks.prepare.results.submission-name)
+        - name: agent-endpoint
+          value: $(params.agent-endpoint)
+        - name: red-team-mode
+          value: $(params.red-team-mode)
+        - name: llm-api-base
+          value: $(params.llm-api-base)
+        - name: llm-model
+          value: $(params.llm-model)
+        - name: llm-api-key
+          value: $(params.llm-api-key)
+        - name: pipeline-run-id
+          value: $(context.pipelineRun.name)
+        - name: pipeline-repo-url
+          value: $(params.pipeline-repo-url)
+        - name: pipeline-repo-revision
+          value: $(params.pipeline-repo-revision)
+        - name: concurrency
+          value: $(params.red-team-concurrency)
+        - name: crescendo-max-turns
+          value: $(params.red-team-crescendo-max-turns)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+
+    # ======================================================================
     # PHASE 3: EVALUATE (dispatches to harbor/ase/mcpchecker)
     # ======================================================================
     - name: evaluate
-      runAfter: ["test"]
+      runAfter: ["red-team", "test"]
       timeout: "3h"
       taskRef:
         name: evaluate

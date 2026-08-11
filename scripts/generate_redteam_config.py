@@ -83,11 +83,11 @@ def get_num_tests(mode: str) -> int:
 def get_strategies(mode: str) -> list[str]:
     """Return attack strategies based on mode."""
     if mode == "full":
+        # Multi-turn adaptive Crescendo is handled by the PyRIT step, not Promptfoo.
         return [
             "jailbreak:meta",
             "jailbreak:composite",
             "jailbreak:likert",
-            "crescendo",
             "base64",
             "rot13",
             "homoglyph",

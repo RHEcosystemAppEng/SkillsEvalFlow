@@ -176,7 +176,6 @@ class TestGenerateRedteamConfig:
         assert config["redteam"]["numTests"] == self.mod.get_num_tests("full")
 
 
-
 class TestScorecardRedteamGate:
     """Tests for red-team gate construction in aggregate_scorecard.py."""
 

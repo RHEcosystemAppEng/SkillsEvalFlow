@@ -400,7 +400,6 @@ def aggregate_scorecard(
         except Exception as e:
             logger.warning("Failed to process red team results: %s", e, exc_info=True)
 
-
     recommendation, reason = apply_combination_logic(gates, policy)
     logger.info("Final recommendation: %s (%s)", recommendation, reason)
 

@@ -344,6 +344,62 @@ def aggregate_scorecard(
             gate_result.score,
         )
 
+    # Red team gate: consume redteam-results.json if present
+    redteam_results_path = reports_dir / "redteam-results.json"
+    if redteam_results_path.exists():
+        logger.info("Processing red team gate from %s", redteam_results_path)
+        try:
+            from abevalflow.gates.base import Finding, Severity
+
+            redteam_data = json.loads(redteam_results_path.read_text())
+            results_list = redteam_data.get("results", {}).get("results", [])
+            total = len(results_list)
+            failed = [
+                r
+                for r in results_list
+                if r.get("gradingResult")
+                and not r["gradingResult"].get("pass", True)
+                and "fetch failed" not in (r["gradingResult"].get("reason") or "")
+            ]
+            num_findings = len(failed)
+            passed = num_findings == 0
+            score = 1.0 - (num_findings / max(total, 1))
+
+            finding_objects = [
+                Finding(
+                    severity=Severity.HIGH,
+                    message=(f.get("gradingResult", {}).get("reason") or "")[:200],
+                    rule_id=f"promptfoo:{f.get('test', {}).get('metadata', {}).get('pluginId', 'unknown')}",
+                )
+                for f in failed[:20]
+            ]
+
+            redteam_gate = GateResult(
+                gate_name="security",
+                policy_key="red_team",
+                gate_type=GateType.SECURITY,
+                passed=passed,
+                score=round(score, 4),
+                details={
+                    "promptfoo_findings": num_findings,
+                    "promptfoo_total": total,
+                    "total_findings": num_findings,
+                    "total_tests": total,
+                },
+                findings=finding_objects,
+                message=f"{num_findings} vulnerabilities found in {total} adversarial tests",
+            )
+            gates.append(redteam_gate)
+            logger.info(
+                "Red team: passed=%s, score=%.3f, findings=%d/%d",
+                passed,
+                score,
+                num_findings,
+                total,
+            )
+        except Exception as e:
+            logger.warning("Failed to process red team results: %s", e, exc_info=True)
+
     recommendation, reason = apply_combination_logic(gates, policy)
     logger.info("Final recommendation: %s (%s)", recommendation, reason)
 

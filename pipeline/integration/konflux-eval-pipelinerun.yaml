@@ -104,6 +104,22 @@ spec:
           Name of the Secret containing 'token' key for the workload cluster.
           Only used when EVAL_MODE=remote.
 
+      # === Red team (adversarial testing) ===
+      - name: ENABLE_RED_TEAM
+        type: string
+        default: "false"
+        description: "Enable red team adversarial evaluation (runs Promptfoo against the target)"
+      - name: RED_TEAM_MODE
+        type: string
+        default: "smoke"
+        description: >-
+          "smoke" generates a quick suite from metadata (~25 tests, basic strategy, ~2 min).
+          "full" generates comprehensive attacks with all strategies (~1750 tests, ~90 min).
+      - name: RED_TEAM_CONCURRENCY
+        type: string
+        default: "12"
+        description: Number of parallel Promptfoo evaluations
+
       # === Pipeline repo (for scripts) ===
       - name: PIPELINE_REPO_URL
         type: string
@@ -221,10 +237,57 @@ spec:
             workspace: shared-workspace
 
       # ================================================================
+      # Stage 3.5: Red Team (adversarial testing, optional)
+      # ================================================================
+      - name: red-team
+        runAfter: [test]
+        when:
+          - input: $(params.ENABLE_RED_TEAM)
+            operator: in
+            values: ["true"]
+        taskRef:
+          resolver: bundles
+          params:
+            - name: name
+              value: red-team
+            - name: bundle
+              value: quay.io/rh-ee-ikrispin/abevalflow-task-red-team:0.1
+            - name: kind
+              value: task
+        params:
+          - name: eval-engine
+            value: $(params.EVAL_ENGINE)
+          - name: submission-dir
+            value: $(params.SUBMISSION_DIR)
+          - name: submission-name
+            value: $(tasks.prepare.results.submission-name)
+          - name: agent-endpoint
+            value: $(params.AGENT_ENDPOINT)
+          - name: mcp-url
+            value: $(params.MCP_URL)
+          - name: red-team-mode
+            value: $(params.RED_TEAM_MODE)
+          - name: llm-api-base
+            value: $(params.LLM_API_BASE)
+          - name: llm-model
+            value: $(params.LLM_MODEL)
+          - name: pipeline-run-id
+            value: $(context.pipelineRun.name)
+          - name: pipeline-repo-url
+            value: $(params.PIPELINE_REPO_URL)
+          - name: pipeline-repo-revision
+            value: $(params.PIPELINE_REPO_REVISION)
+          - name: concurrency
+            value: $(params.RED_TEAM_CONCURRENCY)
+        workspaces:
+          - name: source
+            workspace: shared-workspace
+
+      # ================================================================
       # Stage 4: Evaluate
       # ================================================================
       - name: evaluate
-        runAfter: [test]
+        runAfter: [red-team, test]
         timeout: "3h"
         taskRef:
           resolver: bundles

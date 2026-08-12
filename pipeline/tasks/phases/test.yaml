@@ -74,7 +74,9 @@ spec:
     - name: harness-eval-version
       type: string
       default: "7.9.0"
-      description: Pinned harness-eval version for deterministic submission scanning
+      description: >-
+        Pinned harness-eval version for deterministic submission scanning.
+        Bump this when a new harness-eval release is tested and ready.
     - name: minio-endpoint
       type: string
       default: "minio.ab-eval-flow.svc:9000"

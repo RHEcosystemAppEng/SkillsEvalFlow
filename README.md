@@ -1,4 +1,4 @@
-# ABEvalFlow
+# Agentic Eval Flow
 
 Automated Tekton-orchestrated pipeline on OpenShift for evaluating AI artifacts:
 
@@ -10,7 +10,7 @@ Produces statistical reports with pass rates, uplift metrics, significance tests
 
 ## Pipelines
 
-ABEvalFlow provides two pipeline variants:
+Agentic Eval Flow provides two pipeline variants:
 
 | Pipeline | Purpose | Key Differences |
 |----------|---------|-----------------|
@@ -84,7 +84,7 @@ See [Gate Policy Configuration](#gate-policy-configuration) for full options.
 ## Repository Structure
 
 ```
-ABEvalFlow/
+agentic_eval_flow/
 ├── Docs/                    # ADR, implementation plan, guides
 ├── pipeline/
 │   ├── pipeline.yaml        # Main pipeline definition
@@ -110,7 +110,7 @@ ABEvalFlow/
 | Repository | Purpose |
 |---|---|
 | [skill-submissions](https://github.com/RHEcosystemAppEng/skill-submissions) | Submission intake — users push skills, MCP evals, and agent evals here |
-| [skills_eval_corrections](https://github.com/RHEcosystemAppEng/skills_eval_corrections) | Harbor fork with OpenShift backend for ABEvalFlow |
+| [skills_eval_corrections](https://github.com/RHEcosystemAppEng/skills_eval_corrections) | Harbor fork with OpenShift backend for Agentic Eval Flow |
 | [All-Hands-AI/openhands-agent-monitor](https://github.com/All-Hands-AI/openhands-agent-monitor) | Harbor upstream — agent evaluation framework |
 | [cisco-ai-defense/skill-scanner](https://github.com/cisco-ai-defense/skill-scanner) | Security scanner for prompt injection and data exfiltration detection |
 

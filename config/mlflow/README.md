@@ -1,4 +1,4 @@
-# ABEvalFlow MLflow (eval-only)
+# Agentic Eval Flow MLflow (eval-only)
 
 Lightweight tracking server for AEH post-evaluate logging. **Not** production
 telemetry HA — single replica, SQLite on a PVC.

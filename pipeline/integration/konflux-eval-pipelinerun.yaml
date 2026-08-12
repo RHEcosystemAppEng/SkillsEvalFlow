@@ -119,6 +119,10 @@ spec:
         type: string
         default: "12"
         description: Number of parallel Promptfoo evaluations
+      - name: RED_TEAM_CRESCENDO_MAX_TURNS
+        type: string
+        default: "7"
+        description: Max turns per PyRIT Crescendo objective (full mode only)
 
       # === Pipeline repo (for scripts) ===
       - name: PIPELINE_REPO_URL
@@ -279,6 +283,8 @@ spec:
             value: $(params.PIPELINE_REPO_REVISION)
           - name: concurrency
             value: $(params.RED_TEAM_CONCURRENCY)
+          - name: crescendo-max-turns
+            value: $(params.RED_TEAM_CRESCENDO_MAX_TURNS)
         workspaces:
           - name: source
             workspace: shared-workspace

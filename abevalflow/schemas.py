@@ -39,6 +39,45 @@ class SecurityScanMode(StrEnum):
     BLOCK = "block"
 
 
+class RedTeamMode(StrEnum):
+    SMOKE = "smoke"
+    FULL = "full"
+
+
+class RedTeamConfig(BaseModel):
+    """Optional red-team adversarial testing configuration in metadata.yaml."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = Field(
+        default=True,
+        description="Whether red-team evaluation is enabled for this submission",
+    )
+    mode: RedTeamMode | None = Field(
+        default=None,
+        description="Override pipeline red-team mode: smoke (fast) or full (comprehensive)",
+    )
+    purpose: str | None = Field(
+        default=None,
+        description="What the agent/server does; drives domain-aware attack generation",
+    )
+    auth_context: str | None = Field(
+        default=None,
+        description="Assumed authenticated user context for nuanced policy grading",
+    )
+    policy: str | None = Field(
+        default=None,
+        description="Security policy the agent must uphold under adversarial probing",
+    )
+    crescendo_objectives: list[str] | None = Field(
+        default=None,
+        description=(
+            "Optional explicit PyRIT Crescendo objectives. If omitted, objectives "
+            "are auto-derived from purpose/policy/auth_context at runtime."
+        ),
+    )
+
+
 # Import GateMode from canonical location to avoid duplication
 from abevalflow.gates.base import GateMode  # noqa: E402
 
@@ -576,6 +615,15 @@ class SubmissionMetadata(BaseModel):
             "MCP server configuration for MCPChecker evaluations. "
             "Required when eval_engine is 'mcpchecker'. The referenced secret "
             "must be created by the user in the ab-eval-flow namespace."
+        ),
+    )
+
+    red_team: RedTeamConfig | None = Field(
+        default=None,
+        description=(
+            "Optional red-team adversarial testing configuration. "
+            "When present, drives Promptfoo attack generation and PyRIT "
+            "Crescendo objectives (purpose, policy, auth_context, crescendo_objectives)."
         ),
     )
 

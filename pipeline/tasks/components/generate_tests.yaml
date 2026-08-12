@@ -20,7 +20,7 @@ spec:
       description: Evaluation engine (harbor, ase, both)
     - name: pipeline-repo-url
       type: string
-      default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      default: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
       description: URL of the ABEvalFlow pipeline repository
     - name: pipeline-repo-revision
       type: string

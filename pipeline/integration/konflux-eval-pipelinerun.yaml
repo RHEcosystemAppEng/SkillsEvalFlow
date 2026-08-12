@@ -41,7 +41,7 @@ spec:
         description: "Evaluation engine: harbor, ase, mcpchecker, a2a"
       - name: SUBMISSION_REPO_URL
         type: string
-        default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+        default: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
         description: Git repo containing the submission definition
       - name: SUBMISSION_DIR
         type: string
@@ -127,7 +127,7 @@ spec:
       # === Pipeline repo (for scripts) ===
       - name: PIPELINE_REPO_URL
         type: string
-        default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+        default: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
         description: URL of the ABEvalFlow pipeline repo containing evaluation scripts
       - name: PIPELINE_REPO_REVISION
         type: string

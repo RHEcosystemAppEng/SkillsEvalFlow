@@ -46,7 +46,7 @@ spec:
         - ref: quay-push-binding
       template:
         ref: quay-push-template
-    # NOTE: A GitHub webhook must be configured on RHEcosystemAppEng/ABEvalFlow
+    # NOTE: A GitHub webhook must be configured on RHEcosystemAppEng/agentic_eval_flow
     # pointing to this EventListener URL for litellm-config-push-trigger to fire.
     - name: litellm-config-push-trigger
       interceptors:
@@ -57,7 +57,7 @@ spec:
               value: >-
                 header.match('X-GitHub-Event', 'push') &&
                 body.ref == 'refs/heads/main' &&
-                body.repository.full_name == 'RHEcosystemAppEng/ABEvalFlow' &&
+                body.repository.full_name == 'RHEcosystemAppEng/agentic_eval_flow' &&
                 body.commits.exists(c, c.modified.exists(f, f.startsWith('config/litellm/')) || c.added.exists(f, f.startsWith('config/litellm/')))
       bindings:
         - ref: litellm-config-binding

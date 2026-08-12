@@ -49,7 +49,7 @@ spec:
       description: Branch or SHA of the Harbor fork to install
     - name: pipeline-repo-url
       type: string
-      default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      default: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
       description: URL of the ABEvalFlow pipeline repository
     - name: pipeline-repo-revision
       type: string

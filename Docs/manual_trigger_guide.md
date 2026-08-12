@@ -11,12 +11,12 @@ A2A monitoring runs are triggered automatically by three sources (plus manual Pi
 | Source | When it fires | Agent mode | Key params |
 |--------|---------------|------------|------------|
 | **Quay push webhook** | New image pushed to `quay.io/ecosystem-appeng/google-lightspeed-agent` | Ephemeral deploy | `agent-image`, `agent-tag`; leave `agent-endpoint` empty |
-| **LiteLLM config change** | Push to `main` on `RHEcosystemAppEng/ABEvalFlow` modifying `config/litellm/*` | Existing deployed agent | `agent-endpoint` only |
+| **LiteLLM config change** | Push to `main` on `RHEcosystemAppEng/agentic_eval_flow` modifying `config/litellm/*` | Existing deployed agent | `agent-endpoint` only |
 | **10-day CronJob** | Scheduled every 10 days (`0 6 */10 * *`) | Existing deployed agent | `agent-endpoint` from canary pack config |
 
 **Quay push:** EventListener trigger `quay-push-trigger` deploys a temporary instance of the pushed image, evaluates it, then cleans up. Requires a Quay repository notification pointing at the EventListener URL (pending Ilona access).
 
-**LiteLLM config change:** EventListener trigger `litellm-config-push-trigger` re-tests against the existing agent at `http://lightspeed-agent.ab-eval-flow.svc:8000`. Requires a GitHub webhook on `RHEcosystemAppEng/ABEvalFlow` pointing at the EventListener URL.
+**LiteLLM config change:** EventListener trigger `litellm-config-push-trigger` re-tests against the existing agent at `http://lightspeed-agent.ab-eval-flow.svc:8000`. Requires a GitHub webhook on `RHEcosystemAppEng/agentic_eval_flow` pointing at the EventListener URL.
 
 **10-day CronJob:** The `abevalflow-monitoring` CronJob performs a health check on `/.well-known/agent.json` before triggering; skips eval if the agent is unhealthy.
 
@@ -156,7 +156,7 @@ spec:
     name: abevalflow-monitoring-pipeline
   params:
     - name: repo-url
-      value: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      value: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
     - name: revision
       value: "main"
     - name: submission-dir
@@ -207,7 +207,7 @@ Fires when a new image is pushed to `quay.io/ecosystem-appeng/google-lightspeed-
 
 ### 2. LiteLLM Config Change
 
-Fires when any file under `config/litellm/` (e.g., `config/litellm/configmap.yaml`) is pushed to the `main` branch of `RHEcosystemAppEng/ABEvalFlow`.
+Fires when any file under `config/litellm/` (e.g., `config/litellm/configmap.yaml`) is pushed to the `main` branch of `RHEcosystemAppEng/agentic_eval_flow`.
 
 - EventListener trigger: `litellm-config-push-trigger`
 - Uses the existing deployed agent at `http://lightspeed-agent.ab-eval-flow.svc:8000`
@@ -237,7 +237,7 @@ spec:
     name: abevalflow-monitoring-pipeline
   params:
     - name: repo-url
-      value: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      value: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
     - name: revision
       value: "main"
     - name: submission-dir
@@ -278,7 +278,7 @@ spec:
     name: abevalflow-monitoring-pipeline
   params:
     - name: repo-url
-      value: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      value: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
     - name: revision
       value: "main"
     - name: submission-dir
@@ -586,7 +586,7 @@ spec:
     name: abevalflow-pipeline
   params:
     - name: repo-url
-      value: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      value: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
     - name: revision
       value: "main"
     - name: submission-dir

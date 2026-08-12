@@ -19,7 +19,7 @@ This pipeline spans two repositories:
 
 | Repository | Purpose | Contents |
 |---|---|---|
-| **[ABEvalFlow](https://github.com/RHEcosystemAppEng/ABEvalFlow)** (this repo) | Pipeline definitions, scripts, templates, config | Tekton YAML, Python scripts, Jinja2 templates, Harbor backend |
+| **[ABEvalFlow](https://github.com/RHEcosystemAppEng/agentic_eval_flow)** (this repo) | Pipeline definitions, scripts, templates, config | Tekton YAML, Python scripts, Jinja2 templates, Harbor backend |
 | **[agentic-collections](https://github.com/RHEcosystemAppEng/agentic-collections)** | Skills, tasks, tests (post-evaluation) | Persona-based plugins (`rh-sre`, `rh-developer`, `ocp-admin`, etc.), 100+ skills |
 
 The `tasks-treatment/` and `tasks-control/` directories generated during scaffolding are **ephemeral workspace artifacts** — they exist only during a pipeline run, not as permanent directories in either repo.

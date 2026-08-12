@@ -33,6 +33,17 @@ class LLMResult:
 
 logger = logging.getLogger(__name__)
 
+
+def _set_span_status_error(span, description: str):
+    """Set span status to ERROR, handling missing opentelemetry gracefully."""
+    try:
+        from opentelemetry.trace import StatusCode
+
+        span.set_status(StatusCode.ERROR, description)
+    except ImportError:
+        pass
+
+
 DEFAULT_BASE_URL = "http://litellm.ab-eval-flow.svc:4000/v1"
 DEFAULT_MODEL = "claude-sonnet-4-20250514"
 
@@ -92,13 +103,18 @@ def chat_completion_with_usage(
             temperature,
         )
 
-        response = client.chat.completions.create(
-            model=resolved_model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs,
-        )
+        try:
+            response = client.chat.completions.create(
+                model=resolved_model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                **kwargs,
+            )
+        except Exception as exc:
+            span.record_exception(exc)
+            _set_span_status_error(span, str(exc))
+            raise
 
         content = response.choices[0].message.content or ""
         usage = response.usage

@@ -232,3 +232,33 @@ class TestChatCompletionOtelSpan:
 
         assert result.content == "Hello!"
         assert result.prompt_tokens == 10
+
+    @patch("abevalflow.llm_client.get_client")
+    def test_records_exception_in_span(self, mock_get_client: MagicMock) -> None:
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+        from opentelemetry.trace import StatusCode
+
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = RuntimeError("API timeout")
+        mock_get_client.return_value = mock_client
+
+        with patch("abevalflow.observability.otel.get_tracer", return_value=provider.get_tracer("test")):
+            with pytest.raises(RuntimeError, match="API timeout"):
+                llm_client.chat_completion_with_usage(
+                    [{"role": "user", "content": "hi"}],
+                    model="test-model",
+                )
+
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.status.status_code == StatusCode.ERROR
+        assert any(e.name == "exception" for e in span.events)
+
+        provider.shutdown()

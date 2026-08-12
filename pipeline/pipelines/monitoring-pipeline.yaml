@@ -175,6 +175,13 @@ spec:
       type: string
       default: "true"
       description: Enable unified scorecard aggregation
+    # Observability
+    - name: otel-exporter-endpoint
+      type: string
+      default: ""
+      description: >-
+        OTLP gRPC endpoint for trace export (e.g. otel-collector:4317).
+        Tracing activates only when set. Leave empty to disable.
 
   results:
     - name: recommendation
@@ -392,6 +399,8 @@ spec:
           value: $(params.degradation-threshold)
         - name: enable-scorecard
           value: $(params.enable-scorecard)
+        - name: otel-exporter-endpoint
+          value: $(params.otel-exporter-endpoint)
       workspaces:
         - name: source
           workspace: shared-workspace

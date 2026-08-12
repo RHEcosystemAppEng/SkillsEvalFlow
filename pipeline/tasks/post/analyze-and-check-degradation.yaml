@@ -96,7 +96,9 @@ spec:
       type: string
       default: ""
       description: >-
-        OTEL collector OTLP endpoint (e.g. http://otel-collector:4317).
+        OTLP gRPC endpoint for the OTEL collector (e.g. otel-collector:4317).
+        For gRPC export omit the http:// scheme; use host:4317.
+        HTTP/protobuf uses http://host:4318 instead.
         Tracing activates only when set.
   workspaces:
     - name: source

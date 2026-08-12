@@ -1,8 +1,22 @@
 """OpenTelemetry setup for ABEvalFlow pipeline tracing.
 
-Provides lazy-init OTEL instrumentation that activates only when
-``OTEL_EXPORTER_OTLP_ENDPOINT`` is configured. Falls back to a no-op
-tracer when OTEL packages are not installed or not configured.
+Provides lazy-init OTEL instrumentation with three modes:
+
+- **Standalone OTLP** (``OTEL_EXPORTER_OTLP_ENDPOINT`` only):
+  Configures a TracerProvider with OTLP gRPC exporter.  Spans from
+  ``@timed_gate`` and ``chat_completion_with_usage`` are exported.
+- **MLflow dual-export** (both ``OTEL_EXPORTER_OTLP_ENDPOINT`` and
+  ``MLFLOW_TRACKING_URI``): Delegates to MLflow's built-in OTLP bridge.
+  Phase B spans are **not** exported in this mode — only MLflow's own
+  auto-instrumented traces reach the collector.
+- **MLflow-only** (``MLFLOW_TRACKING_URI`` only): MLflow handles its
+  own tracing.  No TracerProvider is configured, so ``get_tracer()``
+  returns the global no-op — Phase B spans are silently discarded.
+- **Neither set**: no-op (zero overhead).
+
+Phase B scope: spans are emitted only inside the ``aggregate_scorecard``
+process (gates + LLM client).  Other entry points (store, Tekton steps)
+do not call ``setup_tracer_provider()``.
 """
 
 from __future__ import annotations
@@ -16,7 +30,13 @@ _provider_initialized = False
 
 
 def is_otel_enabled() -> bool:
-    """Check whether OTEL tracing should be active."""
+    """Check whether any observability backend is configured.
+
+    Returns True when *either* ``OTEL_EXPORTER_OTLP_ENDPOINT`` or
+    ``MLFLOW_TRACKING_URI`` is set.  Note: Phase B spans (gate / LLM)
+    are only exported in standalone-OTLP mode.  In MLflow-only mode the
+    TracerProvider is the global no-op, so those spans are discarded.
+    """
     return bool(os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or os.environ.get("MLFLOW_TRACKING_URI"))
 
 
@@ -41,12 +61,17 @@ def setup_tracer_provider() -> None:
         return
 
     if mlflow_uri and otel_endpoint:
+        # Dual-export: MLflow's own OTLP bridge forwards MLflow traces to
+        # the collector.  We do NOT set a custom TracerProvider here, so
+        # Phase B spans (gate / LLM) are still no-ops in this mode.
         os.environ.setdefault("MLFLOW_TRACE_ENABLE_OTLP_DUAL_EXPORT", "true")
         logger.info("OTEL: MLflow dual-export enabled (MLflow UI + %s)", otel_endpoint)
         _provider_initialized = True
         return
 
     if mlflow_uri and not otel_endpoint:
+        # MLflow-only: no TracerProvider configured — get_tracer() returns
+        # the global no-op, so Phase B spans are silently discarded.
         logger.info("OTEL: MLflow-only tracing (no OTLP endpoint)")
         _provider_initialized = True
         return

@@ -209,6 +209,13 @@ spec:
       description: >-
         Advisory AEH harness inventory in test phase (does not fail the run).
         Defaults off to avoid an extra AEH image pull; set true to opt in.
+    # Observability
+    - name: otel-exporter-endpoint
+      type: string
+      default: ""
+      description: >-
+        OTLP gRPC endpoint for trace export (e.g. otel-collector:4317).
+        Tracing activates only when set. Leave empty to disable.
     # Security scanning
     - name: security-scan
       type: string
@@ -534,6 +541,8 @@ spec:
           value: "false"
         - name: enable-scorecard
           value: $(params.enable-scorecard)
+        - name: otel-exporter-endpoint
+          value: $(params.otel-exporter-endpoint)
       workspaces:
         - name: source
           workspace: shared-workspace

@@ -1,6 +1,6 @@
 # A2A Agent Evaluation Example
 
-This example demonstrates how to evaluate an A2A-compliant agent (like `google-lightspeed-agent`) using Harbor and the ABEvalFlow pipeline.
+This example demonstrates how to evaluate an A2A-compliant agent (like `google-lightspeed-agent`) using Harbor and the Agentic Eval Flow pipeline.
 
 ## Prerequisites
 
@@ -26,7 +26,7 @@ harbor run \
   --n-attempts 3
 ```
 
-### Via ABEvalFlow Pipeline (Tekton)
+### Via Agentic Eval Flow Pipeline (Tekton)
 
 ```bash
 tkn pipeline start abevalflow-ci-pipeline \

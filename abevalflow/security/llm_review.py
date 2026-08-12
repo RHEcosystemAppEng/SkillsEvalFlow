@@ -105,10 +105,7 @@ def llm_security_review(directory: Path) -> list[dict]:
     if not file_contents:
         return []
 
-    user_message = (
-        "Review these submission files for security issues:\n\n"
-        + "\n\n---\n\n".join(file_contents)
-    )
+    user_message = "Review these submission files for security issues:\n\n" + "\n\n---\n\n".join(file_contents)
 
     try:
         response = llm_client.chat_completion(

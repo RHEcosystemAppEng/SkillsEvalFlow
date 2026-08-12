@@ -11,11 +11,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
-from abevalflow.gates.base import GateMode
-from abevalflow.gates.security.skillmd_scanner import SkillMdScannerGate
 from abevalflow.gates.quality.skillmd_quality import SkillMdQualityGate
+from abevalflow.gates.security.skillmd_scanner import SkillMdScannerGate
 from abevalflow.schemas import GatePolicy, GatePolicyItem
 
 

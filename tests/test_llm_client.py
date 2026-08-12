@@ -171,6 +171,15 @@ class TestChatCompletionWithUsage:
         assert result == "Hello!"
 
 
+try:
+    import opentelemetry.sdk.trace  # noqa: F401
+
+    _has_otel_sdk = True
+except ImportError:
+    _has_otel_sdk = False
+
+
+@pytest.mark.skipif(not _has_otel_sdk, reason="opentelemetry SDK not installed")
 class TestChatCompletionOtelSpan:
     @patch("abevalflow.llm_client.get_client")
     def test_emits_span_with_token_attributes(self, mock_get_client: MagicMock) -> None:

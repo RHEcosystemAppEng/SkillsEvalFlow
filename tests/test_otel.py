@@ -102,6 +102,17 @@ class TestShutdownTracerProvider:
 # ---------------------------------------------------------------------------
 
 
+try:
+    import opentelemetry.sdk.trace  # noqa: F401
+
+    _has_otel_sdk = True
+except ImportError:
+    _has_otel_sdk = False
+
+_skip_no_otel = pytest.mark.skipif(not _has_otel_sdk, reason="opentelemetry SDK not installed")
+
+
+@_skip_no_otel
 class TestTimedGateWithOtel:
     def test_emits_span_with_attributes(self):
         from opentelemetry.sdk.trace import TracerProvider

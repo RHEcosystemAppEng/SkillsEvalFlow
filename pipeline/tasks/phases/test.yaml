@@ -71,6 +71,10 @@ spec:
     - name: llm-api-key
       type: string
       default: ""
+    - name: harness-eval-version
+      type: string
+      default: "7.9.0"
+      description: Pinned harness-eval version for deterministic submission scanning
     - name: minio-endpoint
       type: string
       default: "minio.ab-eval-flow.svc:9000"
@@ -309,8 +313,8 @@ spec:
         
         echo "Security scan complete"
 
-    # Step 3: SKILL.md security scan (deterministic + LLM semantic review)
-    - name: skillmd-security-scan
+    # Step 3: SKILL.md security + quality scan (harness-eval deterministic + optional LLM)
+    - name: skillmd-scan
       image: registry.access.redhat.com/ubi9/python-311:9.6
       env:
         - name: LLM_API_KEY
@@ -318,11 +322,11 @@ spec:
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
-        echo "=== TEST PHASE: SKILL.md Security Scan ==="
+        echo "=== TEST PHASE: SKILL.md Scan (harness-eval) ==="
 
         EVAL_ENGINE="$(params.eval-engine)"
         if [ "$EVAL_ENGINE" = "mcpchecker" ]; then
-          echo "Skipping SKILL.md scan for eval-engine=$EVAL_ENGINE"
+          echo "MCPChecker mode: SKILL.md scan skipped"
           exit 0
         fi
 
@@ -330,91 +334,55 @@ spec:
         SUBMISSION_MODE="$(params.submission-security-scan)"
         SCAN_MODE="${PIPELINE_MODE:-$SUBMISSION_MODE}"
 
-        if [ "$SCAN_MODE" = "disabled" ]; then
-          echo "Security scanning disabled, skipping SKILL.md scan"
-          exit 0
-        fi
-
         SUBMISSION_PATH="$(workspaces.source.path)/submissions/$(params.submission-dir)"
         SUBMISSION_NAME="$(params.submission-name)"
         REPORT_DIR="$(workspaces.source.path)/reports/$SUBMISSION_NAME"
-        JSON_PATH="$REPORT_DIR/skillmd-security-scan.json"
+        WORKSPACE_ROOT="$(workspaces.source.path)"
+        SECURITY_JSON="$REPORT_DIR/skillmd-security-scan.json"
+        QUALITY_JSON="$WORKSPACE_ROOT/skillmd-quality-scan.json"
         mkdir -p "$REPORT_DIR"
 
-        SKILL_MD=$(find "$SUBMISSION_PATH" -name 'SKILL.md' -type f 2>/dev/null | head -1 || true)
-        if [ -z "$SKILL_MD" ]; then
-          echo "WARN: SKILL.md was not found in submission; skipping SKILL.md security scan"
-          exit 0
-        fi
-        echo "Found SKILL.md at: $SKILL_MD"
+        HARNESS_VERSION="$(params.harness-eval-version)"
+        pip install --quiet --no-cache-dir "harness-eval==$HARNESS_VERSION" 2>&1 | tail -3
 
-        PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
-        pip install --quiet --no-cache-dir pydantic pyyaml openai 2>&1 | tail -3
-        export PYTHONPATH="$PIPELINE_DIR"
-        export LLM_BASE_URL="$(params.llm-base-url)"
-        export LLM_MODEL="$(params.llm-model)"
+        # Build the scan command. Always produce quality output.
+        # Security output is conditional on scan mode.
+        SCAN_CMD=(harness-eval skill-submission-scan "$SUBMISSION_PATH"
+          --output-quality "$QUALITY_JSON")
 
-        USE_LLM="$(params.security-scan-use-llm)"
-        SCAN_CMD=(python3 "$PIPELINE_DIR/scripts/skillmd_security_scan.py"
-          "$SUBMISSION_PATH" --output "$JSON_PATH")
-
-        if [ "$USE_LLM" != "true" ]; then
-          SCAN_CMD+=(--no-llm)
+        if [ "$SCAN_MODE" != "disabled" ]; then
+          SCAN_CMD+=(--output-security "$SECURITY_JSON")
+        else
+          echo "Security scanning disabled; running quality-only scan"
         fi
 
-        echo "Scanning: $SUBMISSION_PATH (use-llm=$USE_LLM)"
+        echo "Scanning: $SUBMISSION_PATH (mode=$SCAN_MODE, harness-eval==$HARNESS_VERSION)"
         "${SCAN_CMD[@]}" 2>&1 || true
 
-        if [ -f "$JSON_PATH" ]; then
-          FINDINGS=$(python3 -c "import json; print(len(json.load(open('$JSON_PATH')).get('findings', [])))" 2>/dev/null || echo "0")
-          echo "SKILL.md scan: $FINDINGS findings"
-        else
-          echo "SKILL.md scan: no output (scanner may have failed)"
+        # Report finding counts
+        for JSON_FILE in "$SECURITY_JSON" "$QUALITY_JSON"; do
+          if [ -f "$JSON_FILE" ]; then
+            BASENAME=$(basename "$JSON_FILE")
+            COUNT=$(python3 -c "import json; print(len(json.load(open('$JSON_FILE')).get('findings', [])))" 2>/dev/null || echo "0")
+            echo "$BASENAME: $COUNT findings"
+          fi
+        done
+
+        # Optional: LLM semantic security review (appends into security JSON)
+        USE_LLM="$(params.security-scan-use-llm)"
+        if [ "$USE_LLM" = "true" ] && [ "$SCAN_MODE" != "disabled" ]; then
+          echo "Running LLM semantic security review..."
+          PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
+          pip install --quiet --no-cache-dir openai 2>&1 | tail -3
+          export PYTHONPATH="$PIPELINE_DIR"
+          export LLM_BASE_URL="$(params.llm-base-url)"
+          export LLM_MODEL="$(params.llm-model)"
+
+          python3 "$PIPELINE_DIR/scripts/llm_security_review.py" \
+            "$SUBMISSION_PATH" --scan-json "$SECURITY_JSON" 2>&1 || true
         fi
 
-        echo "SKILL.md security scan complete"
-
-    # Step 4: SKILL.md deterministic quality checks
-    - name: skillmd-quality-scan
-      image: registry.access.redhat.com/ubi9/python-311:9.6
-      script: |
-        #!/usr/bin/env bash
-        set -euo pipefail
-        echo "=== TEST PHASE: SKILL.md Quality Scan ==="
-
-        EVAL_ENGINE="$(params.eval-engine)"
-        if [ "$EVAL_ENGINE" = "mcpchecker" ]; then
-          echo "MCPChecker mode: SKILL.md quality scan skipped"
-          exit 0
-        fi
-
-        SUBMISSION_PATH="$(workspaces.source.path)/submissions/$(params.submission-dir)"
-        WORKSPACE_ROOT="$(workspaces.source.path)"
-        JSON_PATH="$WORKSPACE_ROOT/skillmd-quality-scan.json"
-
-        SKILL_MD=$(find "$SUBMISSION_PATH" -name 'SKILL.md' -type f 2>/dev/null | head -1 || true)
-        if [ -z "$SKILL_MD" ]; then
-          echo "WARN: SKILL.md was not found in submission; skipping SKILL.md quality scan"
-          exit 0
-        fi
-        echo "Found SKILL.md at: $SKILL_MD"
-
-        PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
-        pip install --quiet --no-cache-dir pydantic pyyaml 2>&1 | tail -3
-        export PYTHONPATH="$PIPELINE_DIR"
-
-        echo "Scanning: $SUBMISSION_PATH"
-        python3 "$PIPELINE_DIR/scripts/skillmd_quality_scan.py" \
-          "$SUBMISSION_PATH" --output "$JSON_PATH" 2>&1 || true
-
-        if [ -f "$JSON_PATH" ]; then
-          FINDINGS=$(python3 -c "import json; print(len(json.load(open('$JSON_PATH')).get('findings', [])))" 2>/dev/null || echo "0")
-          echo "SKILL.md quality scan: $FINDINGS findings"
-        else
-          echo "SKILL.md quality scan: no output (scanner may have failed)"
-        fi
-
-        echo "SKILL.md quality scan complete"
+        echo "SKILL.md scan complete"
 
     # Step 5: Quality review (LLM)
     - name: quality-review

@@ -14,7 +14,7 @@ spec:
     - name: submission-dir
       value: "sample-skill-ai"
     - name: pipeline-repo-url
-      value: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      value: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
     - name: pipeline-repo-revision
       value: "APPENG-4909/ai-assisted-eval"
     - name: enable-ai-generation

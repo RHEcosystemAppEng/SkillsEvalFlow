@@ -58,7 +58,7 @@ WORKLOAD_NAMESPACE: ""          # Required when EVAL_MODE=remote
 WORKLOAD_CREDENTIALS_SECRET: "workload-cluster-credentials"  # Secret name
 
 # Pipeline repo (for evaluation scripts)
-PIPELINE_REPO_URL: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+PIPELINE_REPO_URL: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
 PIPELINE_REPO_REVISION: "main"
 ```
 
@@ -221,7 +221,7 @@ spec:
     resourceKind: pipelinerun
     params:
       - name: url
-        value: https://github.com/RHEcosystemAppEng/ABEvalFlow
+        value: https://github.com/RHEcosystemAppEng/agentic_eval_flow
       - name: revision
         value: main
       - name: pathInRepo

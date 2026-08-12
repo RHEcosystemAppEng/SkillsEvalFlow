@@ -213,7 +213,7 @@ spec:
     name: $PIPELINE_MONITOR
   params:
     - name: repo-url
-      value: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      value: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
     - name: revision
       value: "main"
     - name: submission-dir
@@ -329,7 +329,7 @@ spec:
     name: $PIPELINE_CI
   params:
     - name: repo-url
-      value: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      value: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
     - name: revision
       value: "main"
     - name: submission-dir

@@ -44,7 +44,7 @@ spec:
         recommendation. Set to 0.0 to pass whenever treatment >= control.
     - name: pipeline-repo-url
       type: string
-      default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      default: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
       description: URL of the ABEvalFlow pipeline repository
     - name: pipeline-repo-revision
       type: string

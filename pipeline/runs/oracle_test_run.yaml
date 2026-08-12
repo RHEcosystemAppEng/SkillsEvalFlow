@@ -18,7 +18,7 @@ spec:
 
           # Clone the pipeline repo (which also has the example submission)
           git clone --depth 1 --branch APPENG-4909/ai-assisted-eval \
-            https://github.com/RHEcosystemAppEng/ABEvalFlow.git _pipeline
+            https://github.com/RHEcosystemAppEng/agentic_eval_flow.git _pipeline
 
           # Symlink example as a "submission" so the generate script finds it
           mkdir -p submissions

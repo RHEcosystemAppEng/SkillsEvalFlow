@@ -22,7 +22,7 @@ spec:
         $(context.pipelineRun.name) in the Pipeline definition.
     - name: pipeline-repo-url
       type: string
-      default: "https://github.com/RHEcosystemAppEng/ABEvalFlow.git"
+      default: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
       description: URL of the pipeline repo containing scripts
     - name: pipeline-repo-revision
       type: string

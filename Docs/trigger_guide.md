@@ -936,7 +936,7 @@ See `Docs/trigger_models_and_experiment_types.md` for details.
 
 **Q: Who do I contact for help?**
 Reach out to the ABEvalFlow team or open an issue in the
-[ABEvalFlow repository](https://github.com/RHEcosystemAppEng/ABEvalFlow).
+[ABEvalFlow repository](https://github.com/RHEcosystemAppEng/agentic_eval_flow).
 
 ---
 

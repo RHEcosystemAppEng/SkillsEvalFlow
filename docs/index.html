@@ -83,7 +83,7 @@
       display: block;
       width: 2.35rem;
       height: 2.35rem;
-      border-radius: 0.4rem;
+      border-radius: 0;
       object-fit: cover;
     }
     header h1 {
@@ -106,7 +106,7 @@
       width: 8.5rem;
       height: 8.5rem;
       margin: 0 auto 1.5rem;
-      border-radius: 1.1rem;
+      border-radius: 0;
       object-fit: cover;
       box-shadow: 0 12px 40px rgba(238, 0, 0, 0.18);
     }
@@ -576,9 +576,10 @@
     <a href="#engines">Engines</a>
     <a href="#triggers">Triggers</a>
     <a href="#observability">Observability</a>
+    <a href="#red-team">Red-Team</a>
     <a href="#getting-started">Get Started</a>
     <a href="#results">Results</a>
-    <a href="https://github.com/RHEcosystemAppEng/ABEvalFlow">GitHub</a>
+    <a href="https://github.com/RHEcosystemAppEng/agentic_eval_flow">GitHub</a>
   </nav>
 </header>
 
@@ -597,7 +598,7 @@
   </div>
   <div class="hero-cta">
     <a class="cta" href="#getting-started">Get Started</a>
-    <a class="cta" href="https://github.com/RHEcosystemAppEng/ABEvalFlow">View on GitHub</a>
+    <a class="cta" href="https://github.com/RHEcosystemAppEng/agentic_eval_flow">View on GitHub</a>
   </div>
   <p class="made-at">
     <span class="made-at__label">Made At</span>
@@ -632,10 +633,11 @@
       <article class="flow-stage">
         <div class="flow-stage__num">2</div>
         <h4>Test</h4>
-        <p>Pre-trial gates - security scan and LLM quality review</p>
+        <p>Pre-trial gates - security scan, LLM quality review and adversarial red-team</p>
         <div class="flow-stage__tags">
           <span class="flow-tag">Security</span>
           <span class="flow-tag">Quality</span>
+          <span class="flow-tag">Red-Teaming</span>
         </div>
       </article>
       <article class="flow-stage">
@@ -668,7 +670,7 @@
       <div class="flow-gates">
         <article class="flow-gate">
           <h5>Security</h5>
-          <p>Prompt injection, exfiltration, policy findings</p>
+          <p>Prompt injection, exfiltration, policy findings, and adversarial red-team results</p>
         </article>
         <article class="flow-gate">
           <h5>Quality</h5>
@@ -806,6 +808,39 @@
   </div>
 </section>
 
+<section id="red-team">
+  <div class="section-heading">
+    <svg class="section-heading__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+      <path d="M2 17l10 5 10-5"/>
+      <path d="M2 12l10 5 10-5"/>
+    </svg>
+    <h3>Adversarial Red-Team Testing</h3>
+  </div>
+  <p>Opt-in adversarial security testing runs between Test and Evaluate stages. Two complementary frameworks probe your agent for vulnerabilities using LLM-as-judge scoring.</p>
+  <div class="features" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+    <div class="card">
+      <div class="card-title">
+        <h4>Promptfoo</h4>
+        <a href="https://github.com/promptfoo/promptfoo" target="_blank" title="Promptfoo on GitHub" style="margin-left: auto; display: inline-flex;">
+          <img src="assets/images/github.svg" alt="GitHub" style="width: 1.19rem; height: 1.19rem; opacity: 0.7;">
+        </a>
+      </div>
+      <p>Broad single-turn adversarial coverage. Generates domain-aware attacks from submission metadata - prompt injection, jailbreaks, policy bypass, and more. ~25 tests in smoke mode, ~1750 in full mode.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <h4>PyRIT Crescendo</h4>
+        <a href="https://github.com/microsoft/PyRIT" target="_blank" title="PyRIT on GitHub" style="margin-left: auto; display: inline-flex;">
+          <img src="assets/images/github.svg" alt="GitHub" style="width: 1.19rem; height: 1.19rem; opacity: 0.7;">
+        </a>
+      </div>
+      <p>Adaptive multi-turn attacks (full mode only). An attacker LLM generates escalating prompts based on live agent responses; an LLM judge scores whether adversarial objectives were achieved.</p>
+    </div>
+  </div>
+  <p style="margin-top: 1.25rem;">Enable with <code>ENABLE_RED_TEAM=true</code>. Results feed into the Security gate as <code>policy_key: red_team</code>.</p>
+</section>
+
 <section class="alt" id="getting-started">
   <div>
     <div class="section-heading">
@@ -920,7 +955,7 @@ git add submissions/my-skill-eval && git commit -m "Submit skill eval" && git pu
 </section>
 
 <footer>
-  <p>Agentic Eval Flow &mdash; <a href="https://github.com/RHEcosystemAppEng/ABEvalFlow">GitHub</a> &mdash; Apache-2.0 License &mdash; Red Hat Ecosystem App Engineering</p>
+  <p>Agentic Eval Flow &mdash; <a href="https://github.com/RHEcosystemAppEng/agentic_eval_flow">GitHub</a> &mdash; Apache-2.0 License &mdash; Red Hat Ecosystem App Engineering</p>
 </footer>
 
 <script>

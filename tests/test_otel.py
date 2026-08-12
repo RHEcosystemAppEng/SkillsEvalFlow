@@ -214,6 +214,72 @@ class TestTimedGateWithOtel:
             result = gate_with_duration()
             assert result._duration_ms > 0 or result._duration_ms == 0
 
+    def test_failed_gate_sets_error_status(self):
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+        from opentelemetry.trace import StatusCode
+
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+        with patch("abevalflow.observability.decorators.get_tracer") as mock_get_tracer:
+            mock_get_tracer.return_value = provider.get_tracer("test")
+
+            @timed_gate
+            def failing_policy_gate():
+                return GateResult(
+                    gate_type=GateType.SECURITY,
+                    gate_name="security",
+                    policy_key="test-gate",
+                    passed=False,
+                    score=0.2,
+                    mode=GateMode.BLOCK,
+                )
+
+            result = failing_policy_gate()
+
+        assert result.passed is False
+        spans = exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.status.status_code == StatusCode.ERROR
+        assert "failed" in span.status.description
+        assert dict(span.attributes)["gate.passed"] is False
+        assert dict(span.attributes)["gate.score"] == 0.2
+
+        provider.shutdown()
+
+    def test_none_score_not_set_as_attribute(self):
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+        with patch("abevalflow.observability.decorators.get_tracer") as mock_get_tracer:
+            mock_get_tracer.return_value = provider.get_tracer("test")
+
+            class FakeResult:
+                passed = True
+                score = None
+                gate_type = "quality"
+                mode = "warn"
+
+            @timed_gate
+            def gate_without_score():
+                return FakeResult()
+
+            gate_without_score()
+
+        spans = exporter.get_finished_spans()
+        assert "gate.score" not in dict(spans[0].attributes)
+
+        provider.shutdown()
+
     def test_noop_tracer_still_executes_function(self):
         from abevalflow.observability.otel import _NoOpTracer
 

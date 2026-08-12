@@ -64,11 +64,14 @@ def timed_gate(func: Callable[..., Any]) -> Callable[..., Any]:
             span.set_attribute("gate.duration_ms", duration_ms)
             if hasattr(result, "passed"):
                 span.set_attribute("gate.passed", result.passed)
-                span.set_attribute("gate.score", result.score)
+                if result.score is not None:
+                    span.set_attribute("gate.score", result.score)
                 span.set_attribute("gate.gate_type", str(result.gate_type))
                 span.set_attribute("gate.mode", str(result.mode))
                 if result.passed:
                     _set_status_ok(span)
+                else:
+                    _set_status_error(span, f"gate {gate_name} failed")
 
             if hasattr(result, "_duration_ms"):
                 result._duration_ms = duration_ms

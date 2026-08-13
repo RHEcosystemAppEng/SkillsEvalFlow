@@ -361,6 +361,18 @@ spec:
         echo "Scanning: $SUBMISSION_PATH (mode=$SCAN_MODE, harness-eval==$HARNESS_VERSION)"
         "${SCAN_CMD[@]}" 2>&1 || true
 
+        # Verify output files were produced (fail-closed: don't silently pass on crash)
+        if [ ! -f "$QUALITY_JSON" ]; then
+          echo "ERROR: quality scan output not produced ($QUALITY_JSON)"
+          echo "The harness-eval CLI may have failed to install or crashed."
+          exit 1
+        fi
+        if [ "$SCAN_MODE" != "disabled" ] && [ ! -f "$SECURITY_JSON" ]; then
+          echo "ERROR: security scan output not produced ($SECURITY_JSON)"
+          echo "The harness-eval CLI may have failed to install or crashed."
+          exit 1
+        fi
+
         # Report finding counts
         for JSON_FILE in "$SECURITY_JSON" "$QUALITY_JSON"; do
           if [ -f "$JSON_FILE" ]; then

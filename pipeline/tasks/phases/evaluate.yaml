@@ -1259,6 +1259,94 @@ spec:
         print(f"Recommendation: {rec}")
         COMPUTE_REWARDS
 
+    # Step 11b: A2A - Lightspeed Dataset Evaluation (MLflow scorers)
+    # Depends on: a2a-deploy-agent (reads agent-endpoint), a2a-pre-flight.
+    # Skipped unless eval-engine=a2a.
+    # Runs 7 deterministic questions (1 per question type) from the lightspeed
+    # evaluation dataset against the deployed agent via A2A protocol.
+    # Scores responses with MLflow LLM judge scorers (Correctness, RelevanceToQuery,
+    # ExpectationsGuidelines, Safety, ErrorHandling) using the pipeline's LiteLLM proxy.
+    # Logs metrics and traces to MLflow when mlflow-tracking-uri is set.
+    - name: a2a-lightspeed-eval
+      image: image-registry.openshift-image-registry.svc:5000/ab-eval-flow/eval-base:local-env
+      computeResources:
+        requests:
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+      env:
+        - name: HOME
+          value: /tmp
+        - name: LLM_JUDGE_MODEL
+          value: "openai/$(params.llm-model)"
+        - name: LLM_BASE_URL
+          value: "$(params.llm-api-base)"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-credentials
+              key: api-key
+              optional: true
+        - name: OPENAI_BASE_URL
+          value: "$(params.llm-api-base)"
+        - name: MLFLOW_GENAI_JUDGE_DEFAULT_MODEL
+          value: "openai:/$(params.llm-model)"
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        EVAL_ENGINE="$(params.eval-engine)"
+        if [ "$EVAL_ENGINE" != "a2a" ]; then
+          echo "Skipping lightspeed eval (eval-engine=$EVAL_ENGINE)"
+          exit 0
+        fi
+
+        # Read endpoint from deploy step or param
+        ENDPOINT_FILE="$(workspaces.source.path)/_eval_tmp/agent-endpoint"
+        if [ -f "$ENDPOINT_FILE" ]; then
+          AGENT_ENDPOINT=$(cat "$ENDPOINT_FILE")
+        else
+          AGENT_ENDPOINT="$(params.agent-endpoint)"
+        fi
+
+        if [ -z "$AGENT_ENDPOINT" ]; then
+          echo "ERROR: No agent endpoint available (deploy failed or not provided)"
+          exit 1
+        fi
+
+        echo "=== Lightspeed Dataset Evaluation ==="
+
+        RESULTS_DIR="$(workspaces.source.path)/eval-results/$(params.submission-name)"
+        REPORT_DIR="$(workspaces.source.path)/reports/$(params.submission-name)"
+        MLFLOW_URI="$(params.mlflow-tracking-uri)"
+
+        mkdir -p "$RESULTS_DIR" "$REPORT_DIR"
+
+        echo "Agent:  $AGENT_ENDPOINT"
+        echo "Judge:  $LLM_JUDGE_MODEL via $LLM_BASE_URL"
+        echo "MLflow: ${MLFLOW_URI:-disabled}"
+
+        # Install lightspeed-eval package
+        pip install --quiet --user \
+          "lightspeed-eval @ git+https://github.com/ccamacho/lightspeed-dataset.git" 2>&1 | tail -1
+
+        # Build eval command
+        EVAL_ARGS="--agent-endpoint $AGENT_ENDPOINT --per-type 1"
+
+        if [ -n "$MLFLOW_URI" ]; then
+          EVAL_ARGS="$EVAL_ARGS --tracking-uri $MLFLOW_URI --experiment lightspeed-a2a-monitoring"
+        fi
+
+        # Run evaluation
+        # LLM judges use OPENAI_BASE_URL + MLFLOW_GENAI_JUDGE_DEFAULT_MODEL (set via env)
+        python -m mlflow_eval.run_eval $EVAL_ARGS 2>&1 | tee "$RESULTS_DIR/lightspeed-eval.log"
+
+        # Copy results to report dir for analyze step
+        cp "$RESULTS_DIR/lightspeed-eval.log" "$REPORT_DIR/" 2>/dev/null || true
+
+        echo "=== Lightspeed eval complete ==="
+
     # Step 12: AEH - Agent-Eval-Harness Evaluation (single mode)
     # Depends on: prepare (pipeline clone), validate. Skipped unless eval-engine=aeh
     # and aeh-mode=single. Writes run dirs under reports/<skill>/ for AEH layout,

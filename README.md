@@ -96,7 +96,7 @@ agentic_eval_flow/
 │       ├── security-scan.yaml
 │       ├── scaffold.yaml
 │       ├── build-push.yaml
-│       ├── harbor-eval.yaml
+│       ├── phases/evaluate.yaml
 │       ├── analyze-report.yaml
 │       └── publish-store.yaml
 ├── templates/               # Jinja2 templates (Dockerfiles, test.sh, task.toml)

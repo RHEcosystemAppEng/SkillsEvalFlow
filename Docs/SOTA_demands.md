@@ -1,6 +1,6 @@
 # SOTA Demands: CI and Monitoring Pipeline
 
-Assessment of ABEvalFlow's CI (`abevalflow-pipeline`) and monitoring (`abevalflow-monitoring-pipeline`) against state-of-the-art expectations for agent, tool, skill, and MCP evaluation platforms.
+Assessment of Agentic Eval Flow's CI (`abevalflow-pipeline`) and monitoring (`abevalflow-monitoring-pipeline`) against state-of-the-art expectations for agent, tool, skill, and MCP evaluation platforms.
 
 **Scope:** Gap analysis and recommended roadmap. Does not replace existing ADRs or implementation plans.
 
@@ -8,7 +8,7 @@ Assessment of ABEvalFlow's CI (`abevalflow-pipeline`) and monitoring (`abevalflo
 
 ## Executive Summary
 
-ABEvalFlow is **SOTA on breadth**: multi-engine evaluation (Harbor, ASE, MCPChecker, A2A) on OpenShift with persistence, statistical A/B analysis, and a separate monitoring path.
+Agentic Eval Flow is **SOTA on breadth**: multi-engine evaluation (Harbor, ASE, MCPChecker, A2A) on OpenShift with persistence, statistical A/B analysis, and a separate monitoring path.
 
 It is **not yet SOTA on enforcement, observability depth, or lifecycle closure**:
 

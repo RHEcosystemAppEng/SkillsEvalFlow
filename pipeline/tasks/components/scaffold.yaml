@@ -18,7 +18,7 @@ spec:
     - name: pipeline-repo-url
       type: string
       default: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
-      description: URL of the ABEvalFlow pipeline repository
+      description: URL of the Agentic Eval Flow pipeline repository
     - name: pipeline-repo-revision
       type: string
       default: "main"

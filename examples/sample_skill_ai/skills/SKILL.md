@@ -1,6 +1,6 @@
 # Hello World Skill
 
-A trivial file-creation skill used as a smoke test for the ABEvalFlow pipeline.
+A trivial file-creation skill used as a smoke test for the Agentic Eval Flow pipeline.
 
 ## What the agent must do
 

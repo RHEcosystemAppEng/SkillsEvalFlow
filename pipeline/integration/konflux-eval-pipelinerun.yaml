@@ -1,4 +1,4 @@
-# ABEvalFlow Generic Evaluation Pipeline for Konflux
+# Agentic Eval Flow Generic Evaluation Pipeline for Konflux
 #
 # This is a REFERENCE pipeline that any Konflux application can use for
 # AI evaluation (agents, MCP servers, skills). It provides 7 core stages:
@@ -128,7 +128,7 @@ spec:
       - name: PIPELINE_REPO_URL
         type: string
         default: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
-        description: URL of the ABEvalFlow pipeline repo containing evaluation scripts
+        description: URL of the Agentic Eval Flow pipeline repo containing evaluation scripts
       - name: PIPELINE_REPO_REVISION
         type: string
         default: "main"

@@ -1,11 +1,11 @@
 # Compass Facts API Integration
 
-ABEvalFlow can push gate evaluation results to Red Hat Compass as Soundcheck facts.
+Agentic Eval Flow can push gate evaluation results to Red Hat Compass as Soundcheck facts.
 This enables visibility of skill evaluation metrics directly in the Compass developer portal.
 
 ## Overview
 
-When configured, ABEvalFlow will POST gate results to the Compass Facts API after each
+When configured, Agentic Eval Flow will POST gate results to the Compass Facts API after each
 gate evaluation completes. This provides real-time visibility into:
 
 - Engine gate results (Harbor, ASE, A2A, MCPChecker)
@@ -110,7 +110,7 @@ Each gate result is pushed as a Soundcheck fact with this structure:
 
 ## Certification Levels
 
-ABEvalFlow automatically computes certification levels based on gate results and pushes
+Agentic Eval Flow automatically computes certification levels based on gate results and pushes
 them to Compass. Three certification levels are supported:
 
 | Level | Description | Requirements |
@@ -121,7 +121,7 @@ them to Compass. Three certification levels are supported:
 
 ### Certification Facts
 
-When `push_facts` is configured, ABEvalFlow automatically pushes 4 certification facts:
+When `push_facts` is configured, Agentic Eval Flow automatically pushes 4 certification facts:
 
 | Fact Reference | Description |
 |----------------|-------------|
@@ -299,7 +299,7 @@ will raise a `ValueError` at runtime.
 ## Validation Warning
 
 If `push_facts.endpoint` is configured but no gates have `push_fact: true`,
-ABEvalFlow logs a warning:
+Agentic Eval Flow logs a warning:
 
 ```
 WARNING: push_facts.endpoint is configured but no gates have push_fact=True.
@@ -429,7 +429,7 @@ kubectl run dns-test --rm -it --restart=Never --image=busybox -- nslookup compas
 
 ## Error Handling
 
-- If a fact push fails, ABEvalFlow logs a warning but continues processing
+- If a fact push fails, Agentic Eval Flow logs a warning but continues processing
 - Gate evaluation results are not affected by fact push failures
 - Timeouts default to 30 seconds per push request
 - Authentication failures (401/403) are logged with the specific error

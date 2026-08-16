@@ -12,7 +12,7 @@ Persist every A/B evaluation run to PostgreSQL so results are queryable, compara
 
 ---
 
-## Scope — What This Ticket Covers (ABEvalFlow side)
+## Scope — What This Ticket Covers (Agentic Eval Flow side)
 
 | Deliverable | Description |
 |---|---|
@@ -335,13 +335,13 @@ Harbor already writes `result.json` per trial with `verifier_result.rewards.rewa
 ### Layer 3: Connecting Both Layers
 
 The `pipeline_run_id` (Tekton run name) is the join key:
-- ABEvalFlow stores it in `evaluation_runs.pipeline_run_id` (PostgreSQL)
+- Agentic Eval Flow stores it in `evaluation_runs.pipeline_run_id` (PostgreSQL)
 - Harbor trial pods can set it as an OTel resource attribute (`pipeline.run.id`)
 - Any observability backend can correlate evaluation results with individual LLM traces using this key
 
 ### Recommended Sequence
 
-1. **Now (APPENG-4985):** PostgreSQL + observer protocol in ABEvalFlow ← this ticket
+1. **Now (APPENG-4985):** PostgreSQL + observer protocol in Agentic Eval Flow ← this ticket
 2. **Next:** Pick an observability backend (MLflow or Langfuse) and implement one `ResultsObserver` adapter (~50 lines)
 3. **Then:** Add OTel SDK to Harbor trial pods for LLM call tracing
 4. **Finally:** Grafana dashboards over PostgreSQL for trend monitoring

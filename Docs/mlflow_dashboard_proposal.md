@@ -1,4 +1,4 @@
-# MLflow Dashboard Proposal — ABEvalFlow Observability
+# MLflow Dashboard Proposal — Agentic Eval Flow Observability
 
 Phase C+D of APPENG-5370. Using MLflow's built-in dashboard and experiment tracking to visualize pipeline results, gate scores, certification levels, and LLM token usage — all in one place.
 

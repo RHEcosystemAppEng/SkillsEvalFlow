@@ -1,6 +1,6 @@
 # How to Submit a Skill for A/B Evaluation
 
-This guide explains how to submit a skill to the ABEvalFlow pipeline for
+This guide explains how to submit a skill to the Agentic Eval Flow pipeline for
 automated evaluation. By the end, you'll know what files to prepare, how to
 submit them, and what happens next.
 
@@ -8,7 +8,7 @@ submit them, and what happens next.
 
 ## What is this pipeline?
 
-ABEvalFlow automatically tests whether an AI agent performs better **with**
+Agentic Eval Flow automatically tests whether an AI agent performs better **with**
 your skill than **without** it. It does this by running the same task many
 times in two configurations:
 
@@ -401,7 +401,7 @@ AEH-specific parameters:
 
 **Note on execution backends:**
 - **harbor** (default): Containerized execution in OpenShift trial pods via AEH’s OpenShiftEnvironment.
-- **vanilla**: Not yet implemented in ABEvalFlow.
+- **vanilla**: Not yet implemented in Agentic Eval Flow.
 
 #### AEH Pairwise A/B Testing
 
@@ -499,7 +499,7 @@ all-ties (no decisive losses). Scores still report the honest `win_rate` (e.g.
 |------|----------|
 | `debug/aeh/treatment-*/summary.yaml` → `pairwise:` | Wins/ties + LLM reasoning (AEH native) |
 | `debug/aeh/treatment-*/report.html` | HTML regenerated with `--baseline` (includes pairwise) |
-| `report.json` → `pairwise` | Aggregated ABEvalFlow report |
+| `report.json` → `pairwise` | Aggregated Agentic Eval Flow report |
 | `debug/harbor/control|treatment/<timestamp>/` | Raw Harbor trial trees |
 | `debug/aeh/control-*/` / `treatment-*/` | AEH mapped runs (`summary.yaml`, `run_result.json`, `cases/`) |
 
@@ -935,8 +935,8 @@ prompt comparison, custom). Set `experiment.type` in `metadata.yaml`.
 See `Docs/trigger_models_and_experiment_types.md` for details.
 
 **Q: Who do I contact for help?**
-Reach out to the ABEvalFlow team or open an issue in the
-[ABEvalFlow repository](https://github.com/RHEcosystemAppEng/agentic_eval_flow).
+Reach out to the Agentic Eval Flow team or open an issue in the
+[Agentic Eval Flow repository](https://github.com/RHEcosystemAppEng/agentic_eval_flow).
 
 ---
 

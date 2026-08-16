@@ -1,4 +1,4 @@
-"""OpenTelemetry setup for ABEvalFlow pipeline tracing.
+"""OpenTelemetry setup for Agentic Eval Flow pipeline tracing.
 
 Provides lazy-init OTEL instrumentation with three modes:
 

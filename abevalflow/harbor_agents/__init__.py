@@ -1,4 +1,4 @@
-"""Harbor agent adapters for ABEvalFlow.
+"""Harbor agent adapters for Agentic Eval Flow.
 
 This module provides custom Harbor agents that can be loaded via
 --agent-import-path for evaluation purposes.

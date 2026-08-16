@@ -1,12 +1,12 @@
-# ABEvalFlow Konflux Integration Guide
+# Agentic Eval Flow Konflux Integration Guide
 
-This guide explains how to integrate ABEvalFlow evaluation into any Konflux
-application pipeline. ABEvalFlow provides generic evaluation tasks as Tekton
+This guide explains how to integrate Agentic Eval Flow evaluation into any Konflux
+application pipeline. Agentic Eval Flow provides generic evaluation tasks as Tekton
 Bundles that can evaluate A2A agents, MCP servers, and skills.
 
 ## Architecture
 
-ABEvalFlow publishes **8 core tasks** as Tekton Bundles:
+Agentic Eval Flow publishes **8 core tasks** as Tekton Bundles:
 
 ```
 parse-snapshot → prepare → test → [red-team] → evaluate → analyze-scorecard → store → emit-result
@@ -27,7 +27,7 @@ These tasks handle the entire evaluation lifecycle:
 | `emit-result` | Map scorecard to Konflux's `TEST_OUTPUT` format |
 
 Your application adds its own deployment and cleanup logic around these core
-tasks. ABEvalFlow never deploys or manages your application.
+tasks. Agentic Eval Flow never deploys or manages your application.
 
 ## Parameter Contract
 
@@ -82,7 +82,7 @@ PIPELINE_REPO_REVISION: "main"
 
 For `harbor` in Konflux, the local mode runs with `environment.type: local` which
 does not perform the full scaffold/build/eval cycle. For full Harbor A/B testing
-with container registry support, use the standalone ABEvalFlow pipeline on OpenShift.
+with container registry support, use the standalone Agentic Eval Flow pipeline on OpenShift.
 
 ### Multi-component Applications
 
@@ -120,7 +120,7 @@ Required in this mode:
 
 ## Submissions
 
-A **submission** is the evaluation definition package. It tells ABEvalFlow what
+A **submission** is the evaluation definition package. It tells Agentic Eval Flow what
 to test and how to judge results. Structure depends on the eval engine:
 
 ### A2A Agent Submission
@@ -201,7 +201,7 @@ Submissions can live in any Git repository. The pipeline accepts
 ### Pattern 1: Pre-deployed Target (simplest)
 
 If your agent or MCP server is already running (e.g., a long-lived service),
-use ABEvalFlow's reference pipeline directly:
+use Agentic Eval Flow's reference pipeline directly:
 
 ```yaml
 apiVersion: appstudio.redhat.com/v1beta2
@@ -214,7 +214,7 @@ metadata:
 spec:
   application: <your-app-name>
   contexts:
-    - description: AI evaluation via ABEvalFlow
+    - description: AI evaluation via Agentic Eval Flow
       name: application
   resolverRef:
     resolver: git
@@ -242,7 +242,7 @@ spec:
 ### Pattern 2: Pipeline-deployed Target
 
 If your target needs to be deployed for each evaluation run, create your own
-pipeline that wraps ABEvalFlow's core tasks with deploy/cleanup steps.
+pipeline that wraps Agentic Eval Flow's core tasks with deploy/cleanup steps.
 
 See the [full working example](https://github.com/ikrispin/abevalflow-konflux-example)
 for the Google Lightspeed Agent.
@@ -251,7 +251,7 @@ Key steps:
 1. Create a `deploy-<app>.yaml` task that deploys your application and outputs
    the endpoint URL as a task result
 2. Create a `cleanup-<app>.yaml` task for the `finally:` block
-3. Create a PipelineRun that chains: deploy → ABEvalFlow core tasks → cleanup
+3. Create a PipelineRun that chains: deploy → Agentic Eval Flow core tasks → cleanup
 4. Create a submission definition for your evaluation scenarios
 5. Create an IntegrationTestScenario pointing to your pipeline
 

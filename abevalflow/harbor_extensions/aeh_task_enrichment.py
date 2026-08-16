@@ -29,7 +29,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 _ANNOTATIONS_STAGE = """
-# ABEvalFlow: stage annotations for Harbor verifier judges.
+# Agentic Eval Flow: stage annotations for Harbor verifier judges.
 # reward.py uses case_dir basename (e.g. "workspace") under dataset.path.
 if [ -f "@@WORKDIR@@/annotations.yaml" ]; then
   _aeh_case="$(basename "@@WORKDIR@@")"
@@ -182,7 +182,7 @@ def _enrich_one_task(
             if judge_model:
                 models["judge"] = judge_model
         if reward_inject is not None and not (isinstance(cfg.get("reward"), dict) and cfg["reward"]):
-            # Only ABEvalFlow-injected rewards get score_range [0, 1]. Do not
+            # Only Agentic Eval Flow-injected rewards get score_range [0, 1]. Do not
             # rewrite submission-authored weighted rewards that omit score_range
             # (AEH default [1, 5] may be intentional for Likert judges).
             cfg["reward"] = reward_inject
@@ -278,7 +278,7 @@ def _dir_has_skill_md(skills_root: Path) -> bool:
 
 def _inject_annotations_stage(test_sh: Path) -> None:
     text = test_sh.read_text()
-    if "ABEvalFlow: stage annotations" in text:
+    if "Agentic Eval Flow: stage annotations" in text:
         return
 
     workdir = "/workspace"

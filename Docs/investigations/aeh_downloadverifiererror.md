@@ -25,7 +25,7 @@ DownloadVerifierDirError: Failed to download verifier directory from environment
 - **OpenShift SCC**: restricted-v2 (enforces read-only root filesystem)
 - **Local Development**:
   - agent-eval-harness cloned at `/Users/gziv/Dev/agent-eval-harness`
-  - ABEvalFlow pipeline repo at `/Users/gziv/Dev/ABEvalFlow`
+  - Agentic Eval Flow pipeline repo at `/Users/gziv/Dev/Agentic Eval Flow`
 
 ## Attempts and Results
 

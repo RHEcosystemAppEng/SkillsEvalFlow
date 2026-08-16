@@ -93,7 +93,7 @@ tasks:
       image_ref: "registry/ns/my-submission@sha256:def..."
 ```
 
-ABEvalFlow currently runs each variant as a separate Harbor job (two
+Agentic Eval Flow currently runs each variant as a separate Harbor job (two
 `harbor run` invocations). Per-task kwargs enables a single-job
 alternative if needed in the future.
 
@@ -140,10 +140,10 @@ from interfering with regular REST calls in other coroutines.
 - **Integration tests:** Test against OpenShift developer sandbox (ROSA/OSD).
   Do **not** use Kind/Minikube — they won't catch SCC/Routes differences.
 
-## Tekton Task (in ABEvalFlow repo)
+## Tekton Task (in Agentic Eval Flow repo)
 
 The `harbor-eval` Tekton task (`pipeline/tasks/harbor-eval.yaml`) invokes
-Harbor from the ABEvalFlow pipeline:
+Harbor from the Agentic Eval Flow pipeline:
 
 - Installs Harbor from the fork via `pip install git+<fork-url>@<revision>`
 - Generates two per-variant job configs using `scripts/generate_eval_config.py`

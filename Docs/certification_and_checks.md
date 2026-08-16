@@ -1,6 +1,6 @@
 # Certification, Scorecards, Checks, and Facts
 
-This document describes ABEvalFlow's certification system, which evaluates AI artifacts (skills, MCP servers, agents) against a comprehensive set of checks organized into three certification levels.
+This document describes Agentic Eval Flow's certification system, which evaluates AI artifacts (skills, MCP servers, agents) against a comprehensive set of checks organized into three certification levels.
 
 ## Overview
 

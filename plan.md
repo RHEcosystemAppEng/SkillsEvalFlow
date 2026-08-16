@@ -173,7 +173,7 @@ Add this entry to `_ENVIRONMENT_REGISTRY` dict (after the OPENSHIFT entry):
 ## Step 4: Test locally
 
 ```bash
-cd /Users/gziv/Dev/ABEvalFlow
+cd /Users/gziv/Dev/Agentic Eval Flow
 pip install -e /Users/gziv/Dev/skills_eval_corrections
 
 # Test with a simple task
@@ -189,7 +189,7 @@ git commit -m "feat: add local environment type for direct subprocess execution"
 git push -u origin feature/local-environment
 ```
 
-## Step 6: Update ABEvalFlow evaluate.yaml
+## Step 6: Update Agentic Eval Flow evaluate.yaml
 
 In the A2A Harbor config generation section, change environment type from `openshift` to `local`:
 ```python

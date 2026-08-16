@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Adaptive Crescendo multi-turn red-team runner.
 
-Runs after Promptfoo in the ABEvalFlow red-team task. Generates attacker
+Runs after Promptfoo in the Agentic Eval Flow red-team task. Generates attacker
 turns live based on the target's responses and grades objective success
 with an LLM-as-judge via LiteLLM.
 """

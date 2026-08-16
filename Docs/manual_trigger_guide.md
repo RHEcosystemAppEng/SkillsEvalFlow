@@ -141,7 +141,7 @@ YAML
 
 ## A2A Run (lightspeed-agent)
 
-Uses `ABEvalFlow/a2a-agent-eval` — evaluates the deployed Lightspeed A2A agent.
+Uses `Agentic Eval Flow/a2a-agent-eval` — evaluates the deployed Lightspeed A2A agent.
 The agent must already be running at `http://lightspeed-agent.ab-eval-flow.svc:8000`.
 
 ```bash
@@ -211,7 +211,7 @@ Fires when any file under `config/litellm/` (e.g., `config/litellm/configmap.yam
 
 - EventListener trigger: `litellm-config-push-trigger`
 - Uses the existing deployed agent at `http://lightspeed-agent.ab-eval-flow.svc:8000`
-- **Requires:** GitHub webhook on the ABEvalFlow repo pointing to:
+- **Requires:** GitHub webhook on the Agentic Eval Flow repo pointing to:
   `https://el-submission-listener-ab-eval-flow.apps.cn-ai-lab.2vn8.p1.openshiftapps.com`
 
 ### 3. 10-Day Scheduled
@@ -572,7 +572,7 @@ YAML
 
 ## CI A2A
 
-Uses `ABEvalFlow/a2a-agent-eval`. Security scan and quality review disabled (no test files).
+Uses `Agentic Eval Flow/a2a-agent-eval`. Security scan and quality review disabled (no test files).
 
 ```bash
 oc create -f - <<'YAML'

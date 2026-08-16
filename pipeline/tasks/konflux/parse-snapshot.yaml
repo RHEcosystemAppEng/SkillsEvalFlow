@@ -9,7 +9,7 @@ spec:
   description: >-
     Parses a Konflux Snapshot JSON to extract the component container image,
     git source URL, git revision, and component name. This bridges the Konflux
-    SNAPSHOT model with ABEvalFlow's parameter-based pipeline.
+    SNAPSHOT model with Agentic Eval Flow's parameter-based pipeline.
   params:
     - name: SNAPSHOT
       type: string

@@ -1,6 +1,6 @@
 # Infrastructure & Operations Guide
 
-Deployment and operations reference for running ABEvalFlow on OpenShift.
+Deployment and operations reference for running Agentic Eval Flow on OpenShift.
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ Deployment and operations reference for running ABEvalFlow on OpenShift.
 ## Namespace Setup
 
 ```bash
-oc new-project ab-eval-flow --description="ABEvalFlow A/B evaluation pipeline"
+oc new-project ab-eval-flow --description="Agentic Eval Flow A/B evaluation pipeline"
 ```
 
 ## Deployment Order

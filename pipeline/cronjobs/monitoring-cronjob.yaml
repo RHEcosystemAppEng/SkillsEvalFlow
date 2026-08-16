@@ -41,7 +41,7 @@ spec:
                 - |
                   set -e
 
-                  echo "=== ABEvalFlow Monitoring CronJob ==="
+                  echo "=== Agentic Eval Flow Monitoring CronJob ==="
                   echo "Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
                   # ── Helpers ──────────────────────────────────────────────
@@ -166,7 +166,7 @@ spec:
 
                       if [ "$HTTP_STATUS" != "200" ]; then
                         echo "  ERROR: Agent health check FAILED (endpoint=$HEALTH_ENDPOINT, status=$HTTP_STATUS)"
-                        send_slack ":red_circle: *ABEvalFlow Monitoring* — ${SKILL} health check failed (HTTP $HTTP_STATUS). Skipping eval."
+                        send_slack ":red_circle: *Agentic Eval Flow Monitoring* — ${SKILL} health check failed (HTTP $HTTP_STATUS). Skipping eval."
                         continue
                       fi
                       echo "  Agent health check PASSED (HTTP $HTTP_STATUS)"

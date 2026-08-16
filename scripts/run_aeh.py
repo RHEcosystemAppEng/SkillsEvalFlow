@@ -527,7 +527,7 @@ class HarborRunner(BaseRunner):
         return result.returncode
 
     def _prepare_enriched_tasks(self, config: Path, tasks_dir: Path) -> None:
-        """Generate Harbor tasks then apply ABEvalFlow skill/annotation fixes."""
+        """Generate Harbor tasks then apply Agentic Eval Flow skill/annotation fixes."""
         import shutil
 
         from agent_eval.config import EvalConfig

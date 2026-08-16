@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/component: konflux
 spec:
   description: >-
-    Maps ABEvalFlow scorecard results to Konflux's standardized TEST_OUTPUT
+    Maps Agentic Eval Flow scorecard results to Konflux's standardized TEST_OUTPUT
     format. Reads the scorecard.json from the workspace and emits a JSON
     result with SUCCESS/WARNING/FAILURE status.
   params:
@@ -50,7 +50,7 @@ spec:
             *)       RESULT="ERROR" ;;
           esac
 
-          NOTE="ABEvalFlow: recommendation=${SCORECARD_REC}, certification=${CERT_LEVEL}, gates_passed=${GATES_PASSED}, gates_failed=${GATES_FAILED}"
+          NOTE="Agentic Eval Flow: recommendation=${SCORECARD_REC}, certification=${CERT_LEVEL}, gates_passed=${GATES_PASSED}, gates_failed=${GATES_FAILED}"
 
         elif [ -f "$REPORT" ]; then
           REPORT_REC=$(jq -r '.summary.recommendation // "fail"' "$REPORT")
@@ -61,11 +61,11 @@ spec:
             *)       RESULT="ERROR" ;;
           esac
 
-          NOTE="ABEvalFlow: recommendation=${REPORT_REC} (no scorecard)"
+          NOTE="Agentic Eval Flow: recommendation=${REPORT_REC} (no scorecard)"
 
         else
           RESULT="FAILURE"
-          NOTE="ABEvalFlow: no scorecard.json or report.json found"
+          NOTE="Agentic Eval Flow: no scorecard.json or report.json found"
         fi
 
         echo "Result: $RESULT"

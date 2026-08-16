@@ -4,7 +4,7 @@
 
 ## Overview
 
-Four workstreams to complete the ABEvalFlow pipeline. WS1 is the critical path — it renames skilled/unskilled to treatment/control across the codebase and adds the A/B experiment framework.
+Four workstreams to complete the Agentic Eval Flow pipeline. WS1 is the critical path — it renames skilled/unskilled to treatment/control across the codebase and adds the A/B experiment framework.
 
 ```mermaid
 flowchart LR
@@ -23,7 +23,7 @@ flowchart LR
 | PR #1 — Phase 1 validation (APPENG-4903) | Merged |
 | PR #2 — Tekton triggers + validate task (APPENG-4903) | Merged |
 | PR #3 — Phase 2 scaffolding (APPENG-4904) | Merged |
-| PR #4 — Rename to ABEvalFlow | Merged |
+| PR #4 — Rename to Agentic Eval Flow | Merged |
 | Branch `APPENG-4905/phase-3-build-push` | Stale — forked from `c98b547`, missing PRs #1-4. Abandoned. |
 | Harbor OpenShift backend (`skills_eval_corrections`) | Feature-complete in fork, unit tested |
 
@@ -99,7 +99,7 @@ Update [harbor_openshift_backend.md](./harbor_openshift_backend.md) to match the
 
 **Depends on:** WS2 merged (needs image ref handoff)
 
-New `pipeline/tasks/harbor-eval.yaml` in ABEvalFlow:
+New `pipeline/tasks/harbor-eval.yaml` in Agentic Eval Flow:
 - Params: `treatment-image-ref`, `control-image-ref`, `n-trials`, `namespace`
 - Runs `harbor run --env openshift --ek image_ref=<ref> --ek namespace=<ns>`
 - Collects results to workspace/PVC

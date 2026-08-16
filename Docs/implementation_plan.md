@@ -19,7 +19,7 @@ This pipeline spans two repositories:
 
 | Repository | Purpose | Contents |
 |---|---|---|
-| **[ABEvalFlow](https://github.com/RHEcosystemAppEng/agentic_eval_flow)** (this repo) | Pipeline definitions, scripts, templates, config | Tekton YAML, Python scripts, Jinja2 templates, Harbor backend |
+| **[Agentic Eval Flow](https://github.com/RHEcosystemAppEng/agentic_eval_flow)** (this repo) | Pipeline definitions, scripts, templates, config | Tekton YAML, Python scripts, Jinja2 templates, Harbor backend |
 | **[agentic-collections](https://github.com/RHEcosystemAppEng/agentic-collections)** | Skills, tasks, tests (post-evaluation) | Persona-based plugins (`rh-sre`, `rh-developer`, `ocp-admin`, etc.), 100+ skills |
 
 The `tasks-treatment/` and `tasks-control/` directories generated during scaffolding are **ephemeral workspace artifacts** — they exist only during a pipeline run, not as permanent directories in either repo.
@@ -47,7 +47,7 @@ LiteLLM is **optional infrastructure**, needed only for the Vertex AI path. The 
 ### 0.1 Repository Structure
 
 ```
-ABEvalFlow/
+Agentic Eval Flow/
 ├── Docs/                           # ADR, plans, design docs
 ├── pipeline/                       # Tekton pipeline definitions
 │   ├── pipeline.yaml               # Main Pipeline resource
@@ -447,7 +447,7 @@ Pipeline task order when AI features are enabled:
 
 > **Jira:** APPENG-5312
 
-ABEvalFlow supports two evaluation engines:
+Agentic Eval Flow supports two evaluation engines:
 
 | Engine | Use Case | Eval Format |
 |--------|----------|-------------|
@@ -580,7 +580,7 @@ A single evaluation run consumes N × 2 LLM sessions (default N=20, 40 total). C
 - [ ] Define a dedicated test set for mission-critical Insights API calls and tool-mapping expectations.
 - [ ] Create a separate Tekton pipeline/trigger for upstream platform/vendor update events (e.g., Gemini/Insights stack).
 - [ ] Reuse the evaluation infrastructure (containerized runs) for regression tests.
-- [ ] **MCP LightSpeed regression pack** (ADR footnote [e]): Identify the source location of MCP LightSpeed tests (specific repo/path — to be inventoried during this phase). Bundle as committed fixtures in `ABEvalFlow/tests/canary/` or reference via config-driven pointer. The monitoring pipeline task should accept a `canary-test-set` param that defaults to the MCP LightSpeed pack but can be overridden.
+- [ ] **MCP LightSpeed regression pack** (ADR footnote [e]): Identify the source location of MCP LightSpeed tests (specific repo/path — to be inventoried during this phase). Bundle as committed fixtures in `Agentic Eval Flow/tests/canary/` or reference via config-driven pointer. The monitoring pipeline task should accept a `canary-test-set` param that defaults to the MCP LightSpeed pack but can be overridden.
 
 ### 9.2 Degradation Detection
 

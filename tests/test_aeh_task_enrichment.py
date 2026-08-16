@@ -68,7 +68,7 @@ def test_enrich_copies_annotations_and_restores_dataset_path(tmp_path: Path):
     assert bundled["dataset"]["path"] == "cases"
 
     test_sh = (task / "tests" / "test.sh").read_text()
-    assert "ABEvalFlow: stage annotations" in test_sh
+    assert "Agentic Eval Flow: stage annotations" in test_sh
     assert "/tests/cases/" in test_sh
 
 

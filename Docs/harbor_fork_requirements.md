@@ -1,14 +1,14 @@
-# Harbor Fork — Integration Requirements for ABEvalFlow
+# Harbor Fork — Integration Requirements for Agentic Eval Flow
 
 > **Target repo:** [RHEcosystemAppEng/skills_eval_corrections](https://github.com/RHEcosystemAppEng/skills_eval_corrections)
 > **Open PR:** [#1 — feat: add OpenShift environment backend](https://github.com/RHEcosystemAppEng/skills_eval_corrections/pull/1)
-> **ABEvalFlow branch:** `APPENG-4906/harbor-eval-task`
+> **Agentic Eval Flow branch:** `APPENG-4906/harbor-eval-task`
 
 ---
 
-## ABEvalFlow-Side Implementation (current state)
+## Agentic Eval Flow-Side Implementation (current state)
 
-### How ABEvalFlow invokes Harbor
+### How Agentic Eval Flow invokes Harbor
 
 The `harbor-eval` Tekton task (`pipeline/tasks/harbor-eval.yaml`) runs a single
 step that:
@@ -62,7 +62,7 @@ eval-results/<submission-name>/
             ...  (N trials)
 ```
 
-### What ABEvalFlow reads from metadata.yaml
+### What Agentic Eval Flow reads from metadata.yaml
 
 The config generator extracts these fields from `SubmissionMetadata`:
 
@@ -125,7 +125,7 @@ the config path should behave identically but needs confirmation.
 
 **3. `result.json` output format**
 
-ABEvalFlow's pass-rate parser expects:
+Agentic Eval Flow's pass-rate parser expects:
 
 ```json
 {
@@ -146,7 +146,7 @@ Implemented in [PR #2](https://github.com/RHEcosystemAppEng/skills_eval_correcti
 `TaskConfig` now has an `environment_kwargs: dict[str, Any]` field. `Job._env_config_for_task`
 merges per-task kwargs into the global `EnvironmentConfig.kwargs` (task-level overrides global).
 
-ABEvalFlow currently runs each variant as a separate Harbor job, which works
+Agentic Eval Flow currently runs each variant as a separate Harbor job, which works
 without this feature. Per-task kwargs enables a single-job alternative for
 sweep-based workflows:
 

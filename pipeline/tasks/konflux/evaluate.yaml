@@ -21,7 +21,7 @@ spec:
       mcpchecker + remote: supported (untested)
       ase + local: supported (no external endpoint needed)
       harbor + local: limited (no scaffold/build; uses local environment only)
-      harbor + remote: not supported (use standalone ABEvalFlow pipeline)
+      harbor + remote: not supported (use standalone Agentic Eval Flow pipeline)
   params:
     - name: eval-engine
       type: string

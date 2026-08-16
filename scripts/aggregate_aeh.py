@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Map AEH output to ABEvalFlow report format.
+"""Map AEH output to Agentic Eval Flow report format.
 
 Reads agent-eval-harness output files (summary.yaml, run_result.json) and
-produces a unified report.json compatible with ABEvalFlow's scorecard logic.
+produces a unified report.json compatible with Agentic Eval Flow's scorecard logic.
 
 Supports both single-run and pairwise modes:
   - Single: One run directory
@@ -148,7 +148,7 @@ def aggregate_single_run(
         threshold: Pass/fail threshold for mean_reward (matches GatePolicy default)
 
     Returns:
-        Dict in ABEvalFlow report format with full judge metadata
+        Dict in Agentic Eval Flow report format with full judge metadata
     """
     summary_path = run_dir / "summary.yaml"
 
@@ -254,7 +254,7 @@ def aggregate_pairwise_run(
         threshold: Pass/fail win-rate threshold (matches GatePolicy / engine)
 
     Returns:
-        Dict in ABEvalFlow report format with pairwise results
+        Dict in Agentic Eval Flow report format with pairwise results
     """
     treatment_summary_path = treatment_dir / "summary.yaml"
     control_summary_path = control_dir / "summary.yaml"
@@ -376,7 +376,7 @@ def aggregate_aeh_results(
     submission_name: str | None = None,
     threshold: float = DEFAULT_AEH_THRESHOLD,
 ) -> dict[str, Any]:
-    """Aggregate AEH results into ABEvalFlow report format.
+    """Aggregate AEH results into Agentic Eval Flow report format.
 
     Args:
         run_dir: Path to the AEH run output directory (treatment in pairwise mode)
@@ -386,7 +386,7 @@ def aggregate_aeh_results(
         threshold: Pass/fail threshold aligned with AEHEngine / GatePolicy default
 
     Returns:
-        Dict in ABEvalFlow report format
+        Dict in Agentic Eval Flow report format
     """
     if mode == "pairwise":
         if control_dir is None:
@@ -428,7 +428,7 @@ def find_latest_run_dir(reports_dir: Path, submission_name: str) -> Path | None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Aggregate AEH results into ABEvalFlow report format")
+    parser = argparse.ArgumentParser(description="Aggregate AEH results into Agentic Eval Flow report format")
     parser.add_argument(
         "run_dir",
         type=Path,

@@ -1,4 +1,4 @@
-# Lightweight dedicated MLflow tracking server for ABEvalFlow AEH runs.
+# Lightweight dedicated MLflow tracking server for Agentic Eval Flow AEH runs.
 # Backend: sqlite on PVC. Artifacts: same PVC under /mlflow/artifacts.
 # Cluster DNS: http://abevalflow-mlflow.ab-eval-flow.svc.cluster.local:5000
 apiVersion: apps/v1

@@ -1,4 +1,4 @@
-# Dedicated MLflow artifact + sqlite store for ABEvalFlow.
+# Dedicated MLflow artifact + sqlite store for Agentic Eval Flow.
 # Apply into the target namespace (default matches shared cluster config):
 #   oc apply -n ab-eval-flow -f config/mlflow/
 apiVersion: v1

@@ -17,7 +17,7 @@ flowchart TD
         AgentSub["submissions/compare-agents/\n(agent experiment)"]
     end
 
-    subgraph pipeline ["ABEvalFlow Pipeline"]
+    subgraph pipeline ["Agentic Eval Flow Pipeline"]
         Listener["EventListener\nfilters submissions/"]
         Validate["Validate"]
         ScaffoldAndRun["Scaffold, Build, Eval"]
@@ -58,7 +58,7 @@ flowchart TD
         PRCheck["GitHub check / label\ntriggers eval"]
     end
 
-    subgraph pipeline ["ABEvalFlow Pipeline"]
+    subgraph pipeline ["Agentic Eval Flow Pipeline"]
         Listener["EventListener or\nGH Action triggers pipeline"]
         Validate["Validate"]
         ScaffoldAndRun["Scaffold, Build, Eval"]

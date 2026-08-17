@@ -9,7 +9,7 @@ Usage with Harbor CLI:
         --ak endpoint=https://my-agent.example.com \\
         --ak timeout=120 \\
         --ak auth_token=<bearer-jwt> \\
-        --ak verify_ssl=false
+        --ak verify_ssl=true
 
 Usage in Harbor config YAML:
     agents:
@@ -19,7 +19,8 @@ Usage in Harbor config YAML:
           timeout: 120
           auth_token: "<bearer-jwt>"  # optional; falls back to AGENT_AUTH_TOKEN env
           blocking: true              # optional; default True, see A2AAgent.__init__
-          verify_ssl: false           # optional; default True, disable for self-signed endpoints
+          verify_ssl: true            # optional; default False (preserves prior behavior),
+                                      # enable when the endpoint has a CA-trusted cert
 """
 
 from __future__ import annotations
@@ -80,7 +81,7 @@ class A2AAgent(BaseAgent):
         extra_env: dict[str, str] | None = None,
         auth_token: str | None = None,
         blocking: bool = True,
-        verify_ssl: bool = True,
+        verify_ssl: bool = False,
         **kwargs,
     ):
         """Initialize the A2A agent adapter.
@@ -97,8 +98,10 @@ class A2AAgent(BaseAgent):
                 populate `result.artifacts` for the caller when this is set, otherwise the
                 response may come back before the agent has finished and appear empty.
             verify_ssl: Whether to verify TLS certificates when calling the A2A endpoint
-                (default: True). Set to False for endpoints with self-signed certificates
-                (e.g. internal OpenShift/Kubernetes Routes).
+                (default: False, matching prior behavior). Most internal OpenShift/Kubernetes
+                Routes use self-signed or cluster-internal certs, so verification is skipped
+                by default. Set to True when the endpoint has a certificate trusted by the
+                caller's CA bundle.
             **kwargs: Additional arguments passed to BaseAgent.
         """
         super().__init__(logs_dir=logs_dir, model_name=model_name, **kwargs)

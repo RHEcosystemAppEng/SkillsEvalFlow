@@ -7,8 +7,9 @@ Covers three related fixes to abevalflow.harbor_agents.a2a_adapter.A2AAgent:
 2. `configuration.blocking` is now sent on every `message/send` request and is
    configurable via the `blocking` kwarg (default True). Without it, some A2A
    servers return before the agent has finished, yielding an empty response.
-3. TLS verification is configurable via the `verify_ssl` kwarg (default True)
-   instead of being hardcoded to `ssl=False` (always skip verification).
+3. TLS verification is configurable via the `verify_ssl` kwarg (default False,
+   preserving the prior hardcoded `ssl=False` behavior) instead of being
+   permanently hardcoded with no way to opt into verification.
 """
 
 from __future__ import annotations
@@ -88,28 +89,17 @@ class TestA2ABlockingConfiguration:
 
 
 class TestA2AVerifySslConfiguration:
-    def test_verify_ssl_defaults_to_true(self, logs_dir: Path) -> None:
+    def test_verify_ssl_defaults_to_false(self, logs_dir: Path) -> None:
         agent = A2AAgent(logs_dir, "https://agent.example.com")
-        assert agent.verify_ssl is True
-
-    def test_verify_ssl_can_be_disabled(self, logs_dir: Path) -> None:
-        agent = A2AAgent(logs_dir, "https://agent.example.com", verify_ssl=False)
         assert agent.verify_ssl is False
 
+    def test_verify_ssl_can_be_enabled(self, logs_dir: Path) -> None:
+        agent = A2AAgent(logs_dir, "https://agent.example.com", verify_ssl=True)
+        assert agent.verify_ssl is True
+
     @pytest.mark.asyncio
-    async def test_send_request_passes_verify_ssl_true_by_default(self, logs_dir: Path) -> None:
+    async def test_send_request_passes_verify_ssl_false_by_default(self, logs_dir: Path) -> None:
         agent = A2AAgent(logs_dir, "https://agent.example.com")
-        mock_session, patcher = _patched_session(_mock_response())
-
-        with patcher:
-            await agent._send_request({"jsonrpc": "2.0", "id": "1"})
-
-        _, kwargs = mock_session.post.call_args
-        assert kwargs["ssl"] is True
-
-    @pytest.mark.asyncio
-    async def test_send_request_passes_verify_ssl_false_when_disabled(self, logs_dir: Path) -> None:
-        agent = A2AAgent(logs_dir, "https://agent.example.com", verify_ssl=False)
         mock_session, patcher = _patched_session(_mock_response())
 
         with patcher:
@@ -117,3 +107,14 @@ class TestA2AVerifySslConfiguration:
 
         _, kwargs = mock_session.post.call_args
         assert kwargs["ssl"] is False
+
+    @pytest.mark.asyncio
+    async def test_send_request_passes_verify_ssl_true_when_enabled(self, logs_dir: Path) -> None:
+        agent = A2AAgent(logs_dir, "https://agent.example.com", verify_ssl=True)
+        mock_session, patcher = _patched_session(_mock_response())
+
+        with patcher:
+            await agent._send_request({"jsonrpc": "2.0", "id": "1"})
+
+        _, kwargs = mock_session.post.call_args
+        assert kwargs["ssl"] is True

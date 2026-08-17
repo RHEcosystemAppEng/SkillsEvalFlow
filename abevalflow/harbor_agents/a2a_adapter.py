@@ -8,7 +8,8 @@ Usage with Harbor CLI:
         --agent-import-path abevalflow.harbor_agents.a2a_adapter:A2AAgent \\
         --ak endpoint=https://my-agent.example.com \\
         --ak timeout=120 \\
-        --ak auth_token=<bearer-jwt>
+        --ak auth_token=<bearer-jwt> \\
+        --ak verify_ssl=false
 
 Usage in Harbor config YAML:
     agents:
@@ -17,6 +18,8 @@ Usage in Harbor config YAML:
           endpoint: "https://my-agent.example.com"
           timeout: 120
           auth_token: "<bearer-jwt>"  # optional; falls back to AGENT_AUTH_TOKEN env
+          blocking: true              # optional; default True, see A2AAgent.__init__
+          verify_ssl: false           # optional; default True, disable for self-signed endpoints
 """
 
 from __future__ import annotations
@@ -76,6 +79,8 @@ class A2AAgent(BaseAgent):
         model_name: str | None = None,
         extra_env: dict[str, str] | None = None,
         auth_token: str | None = None,
+        blocking: bool = True,
+        verify_ssl: bool = True,
         **kwargs,
     ):
         """Initialize the A2A agent adapter.
@@ -87,12 +92,21 @@ class A2AAgent(BaseAgent):
             context_id: Optional context ID for conversation continuity.
             model_name: Optional model name for logging/tracking.
             auth_token: Optional bearer token for Authorization header (also reads AGENT_AUTH_TOKEN env).
+            blocking: Whether to request synchronous completion via `configuration.blocking`
+                in the `message/send` request (default: True). Some A2A servers only
+                populate `result.artifacts` for the caller when this is set, otherwise the
+                response may come back before the agent has finished and appear empty.
+            verify_ssl: Whether to verify TLS certificates when calling the A2A endpoint
+                (default: True). Set to False for endpoints with self-signed certificates
+                (e.g. internal OpenShift/Kubernetes Routes).
             **kwargs: Additional arguments passed to BaseAgent.
         """
         super().__init__(logs_dir=logs_dir, model_name=model_name, **kwargs)
         self.endpoint = endpoint.rstrip("/")
         self.timeout = timeout
         self.context_id = context_id
+        self.blocking = blocking
+        self.verify_ssl = verify_ssl
         self._extra_env = extra_env or {}
         self._auth_token = (
             auth_token
@@ -136,11 +150,12 @@ class A2AAgent(BaseAgent):
             "jsonrpc": "2.0",
             "method": "message/send",
             "params": {
+                "configuration": {"blocking": self.blocking},
                 "message": {
                     "messageId": message_id,
                     "role": "user",
-                    "parts": [{"text": instruction}],
-                }
+                    "parts": [{"kind": "text", "text": instruction}],
+                },
             },
             "id": request_id,
         }
@@ -183,7 +198,7 @@ class A2AAgent(BaseAgent):
                 self.endpoint,
                 json=payload,
                 headers=headers,
-                ssl=False,
+                ssl=self.verify_ssl,
             ) as response:
                 response.raise_for_status()
                 return await response.json()

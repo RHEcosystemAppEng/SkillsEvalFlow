@@ -25,7 +25,7 @@ DownloadVerifierDirError: Failed to download verifier directory from environment
 - **OpenShift SCC**: restricted-v2 (enforces read-only root filesystem)
 - **Local Development**:
   - agent-eval-harness cloned at `/Users/gziv/Dev/agent-eval-harness`
-  - Agentic Eval Flow pipeline repo at `/Users/gziv/Dev/Agentic Eval Flow`
+  - Agentic Eval Flow pipeline repo at `/Users/gziv/Dev/agentic_eval_flow`
 
 ## Attempts and Results
 
@@ -129,7 +129,7 @@ Confirmed from `case-001__XpJxhiR/exception.txt` / `result.json`:
   `tar cf - -C /logs/verifier . | base64 -w0`
 - Host `verifier/` directory in the job artifact is **empty**
 - Related: `download_file /logs/artifacts: No such file or directory` (best-effort artifact download)
-- Agent did reach `/workspace` and teed to `/logs/agent/claude-code.txt` (agent then failed with `Unknown command: /aeh-hello-world-single` — separate from verifier FS)
+- Agent did reach `/workspace` and teed to `/logs/agent/claude-code.txt` (agent then failed with `Unknown command: /aeh-hello-world-single` -- separate from verifier FS)
 
 Interpretation: download of `/logs/verifier` returned empty stdout (typical when `tar` fails on a missing/unreadable directory but `base64` still exits 0). Current `OpenShiftEnvironment` mounts only `/workspace` and `/tmp`, not Harbor paths `/logs`, `/tests`, `/solution`.
 
@@ -140,7 +140,7 @@ Trial pod `aeh-case-001-bmkubbm-env`:
 | Check | Result |
 |---|---|
 | `OpenShiftEnvironment` mounts present | Yes: emptyDir `/workspace`, `/tmp` |
-| `readOnlyRootFilesystem` | **Not set** — root overlay is `rw` |
+| `readOnlyRootFilesystem` | **Not set** -- root overlay is `rw` |
 | Writability `/logs|/tests|/solution|/tmp|/workspace` | **All writable** without extra mounts |
 | `/logs/verifier` after failed trial | **Missing** |
 | `tar … \| base64` on missing dir | `out_len=0` (base64 masks tar failure) |
@@ -160,7 +160,7 @@ Reproduced on the kept pod:
 ## Fix
 
 In `abevalflow/harbor_extensions/openshift_environment.py`:
-1. After `start()`, `mkdir -p` Harbor paths including `/logs/verifier` (no chmod — SCC UIDs get EPERM)
+1. After `start()`, `mkdir -p` Harbor paths including `/logs/verifier` (no chmod -- SCC UIDs get EPERM)
 2. Override `download_dir` with `set -o pipefail` so missing dirs fail clearly
 3. Keep `/workspace`+`/tmp` emptyDirs; log injected mounts
 4. `aggregate_aeh.py` emits `AnalysisResult`-compatible fields so analyze does not crash
@@ -173,7 +173,7 @@ Blocked initially by PVC quota (`persistentvolumeclaims=10`); freed by deleting 
 **Result:** `DownloadVerifierDirError` **gone**. Trial completed with rewards:
 - Exceptions: 0
 - Exit_Success: 1.000
-- File_Created: 0.000 / Reward: 0.000 (real eval miss — agent did not create `output/greeting.txt`)
+- File_Created: 0.000 / Reward: 0.000 (real eval miss -- agent did not create `output/greeting.txt`)
 - `step-aeh-eval` exits 1 due to AEH `REGRESSIONS` detection (not infra FS)
 
 Remaining non-blocker: evaluate task fails on regression exit code; analyze skipped because evaluate failed.

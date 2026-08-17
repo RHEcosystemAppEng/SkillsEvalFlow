@@ -113,8 +113,8 @@ The evaluation runs as a Pod on a separate workload cluster. Use this when:
 - You need the eval Pod co-located with the target for network access
 
 Required in this mode:
-- `WORKLOAD_CLUSTER_URL` — API URL of the workload cluster
-- `WORKLOAD_NAMESPACE` — Namespace to create the eval Pod in
+- `WORKLOAD_CLUSTER_URL` -- API URL of the workload cluster
+- `WORKLOAD_NAMESPACE` -- Namespace to create the eval Pod in
 - A Secret (named by `WORKLOAD_CREDENTIALS_SECRET`) with a `token` key containing
   a ServiceAccount token for the workload cluster
 
@@ -337,7 +337,7 @@ make bundles
 2. **Create a submission** defining your evaluation scenarios
 3. **Provision secrets** in your Konflux tenant namespace
 4. **Create an IntegrationTestScenario** in your tenant namespace
-5. **Push a change** to your application — Konflux triggers the evaluation
+5. **Push a change** to your application -- Konflux triggers the evaluation
 
 For a complete working example, see:
 [github.com/ikrispin/abevalflow-konflux-example](https://github.com/ikrispin/abevalflow-konflux-example)

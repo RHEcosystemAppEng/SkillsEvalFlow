@@ -4,7 +4,7 @@
 
 ## Overview
 
-Four workstreams to complete the Agentic Eval Flow pipeline. WS1 is the critical path — it renames skilled/unskilled to treatment/control across the codebase and adds the A/B experiment framework.
+Four workstreams to complete the Agentic Eval Flow pipeline. WS1 is the critical path -- it renames skilled/unskilled to treatment/control across the codebase and adds the A/B experiment framework.
 
 ```mermaid
 flowchart LR
@@ -20,11 +20,11 @@ flowchart LR
 
 | Item | Status |
 |------|--------|
-| PR #1 — Phase 1 validation (APPENG-4903) | Merged |
-| PR #2 — Tekton triggers + validate task (APPENG-4903) | Merged |
-| PR #3 — Phase 2 scaffolding (APPENG-4904) | Merged |
-| PR #4 — Rename to Agentic Eval Flow | Merged |
-| Branch `APPENG-4905/phase-3-build-push` | Stale — forked from `c98b547`, missing PRs #1-4. Abandoned. |
+| PR #1 -- Phase 1 validation (APPENG-4903) | Merged |
+| PR #2 -- Tekton triggers + validate task (APPENG-4903) | Merged |
+| PR #3 -- Phase 2 scaffolding (APPENG-4904) | Merged |
+| PR #4 -- Rename to Agentic Eval Flow | Merged |
+| Branch `APPENG-4905/phase-3-build-push` | Stale -- forked from `c98b547`, missing PRs #1-4. Abandoned. |
 | Harbor OpenShift backend (`skills_eval_corrections`) | Feature-complete in fork, unit tested |
 
 ---
@@ -56,18 +56,18 @@ See the detailed commit plan in [ab_testing_generalization_plan.md](./ab_testing
 **Branch:** `APPENG-4905/build-push-treatment-control` (to be created after WS1 merges)
 **Depends on:** WS1 merged
 
-Recreate the build-push Tekton task from scratch on current `main` using treatment/control naming. The old `APPENG-4905/phase-3-build-push` branch is abandoned — it diverged from `c98b547` (before PRs #1-4) and would require a conflict-heavy rebase with no benefit.
+Recreate the build-push Tekton task from scratch on current `main` using treatment/control naming. The old `APPENG-4905/phase-3-build-push` branch is abandoned -- it diverged from `c98b547` (before PRs #1-4) and would require a conflict-heavy rebase with no benefit.
 
 ### What to build
 
-- `pipeline/tasks/build-push.yaml` — Buildah-based build and push for treatment/control images
+- `pipeline/tasks/build-push.yaml` -- Buildah-based build and push for treatment/control images
   - Params: `treatment-task-dir`, `control-task-dir`, `skill-name`, `commit-sha`, `registry-url`, `registry-namespace`
   - Results: `treatment-image-ref`, `control-image-ref` (digest-based)
   - Steps: `build-push-treatment`, `build-push-control` (rootless Buildah, `--storage-driver=vfs`)
   - Image tags: `:treatment-<sha>`, `:control-<sha>`
   - Namespace: `ab-eval-flow`
-- `config/rbac.yaml` — RoleBinding for `system:image-builder` in `ab-eval-flow` namespace
-- Update `Docs/implementation_plan.md` — Phase 3 checkboxes
+- `config/rbac.yaml` -- RoleBinding for `system:image-builder` in `ab-eval-flow` namespace
+- Update `Docs/implementation_plan.md` -- Phase 3 checkboxes
 
 ### Reference
 
@@ -118,12 +118,12 @@ Update [trigger_models_and_experiment_types.md](./trigger_models_and_experiment_
 
 ### Changes
 
-1. **Option 1 stays primary** — standalone submission repo (to be created, e.g. `RHEcosystemAppEng/ab-eval-submissions`)
-2. **Clarify "ephemeral"** — the git submission is persistent as a git artifact, but it's not the final destination; it's an evaluation request. For skills there is code to contribute, but for agent/model/MCP comparisons the output is a decision (env var change, configuration), not a code contribution
-3. **Option 2 enhancement — hybrid approach** — GH Action triggered by a PR label from admins, calling the same pipeline. The eval platform just needs the gitops submission repo to run, no matter how it's created. Skill-admins control their own trigger policy
-4. **Admin-gating** — not all developers should trigger evaluations; admin label/approval gates the pipeline. This is on the skill-owner side, separate from the eval platform
-5. **Two-role separation** — skill-admin (controls trigger policy, labels PRs) vs eval-platform (runs the pipeline from the submission repo)
-6. **Non-code experiments** — agent compare, model compare, MCP eval are env-var/config changes, not repo contributions — reinforces why Option 1 is the natural universal fit
+1. **Option 1 stays primary** -- standalone submission repo (to be created, e.g. `RHEcosystemAppEng/ab-eval-submissions`)
+2. **Clarify "ephemeral"** -- the git submission is persistent as a git artifact, but it's not the final destination; it's an evaluation request. For skills there is code to contribute, but for agent/model/MCP comparisons the output is a decision (env var change, configuration), not a code contribution
+3. **Option 2 enhancement -- hybrid approach** -- GH Action triggered by a PR label from admins, calling the same pipeline. The eval platform just needs the gitops submission repo to run, no matter how it's created. Skill-admins control their own trigger policy
+4. **Admin-gating** -- not all developers should trigger evaluations; admin label/approval gates the pipeline. This is on the skill-owner side, separate from the eval platform
+5. **Two-role separation** -- skill-admin (controls trigger policy, labels PRs) vs eval-platform (runs the pipeline from the submission repo)
+6. **Non-code experiments** -- agent compare, model compare, MCP eval are env-var/config changes, not repo contributions -- reinforces why Option 1 is the natural universal fit
 
 ### Scope
 
@@ -133,11 +133,11 @@ Documentation update only. No code changes. The submission repo trigger (Option 
 
 ## Execution Order
 
-1. **WS1** — A/B generalization (branch exists, start coding)
-2. **WS4** — trigger doc update (can be done during WS1 PR review)
-3. **WS3A** — harbor doc update (can be done during WS1 PR review)
-4. **WS2** — build-push with treatment/control naming (after WS1 merges)
-5. **WS3B** — harbor-eval.yaml task (after WS2 merges)
+1. **WS1** -- A/B generalization (branch exists, start coding)
+2. **WS4** -- trigger doc update (can be done during WS1 PR review)
+3. **WS3A** -- harbor doc update (can be done during WS1 PR review)
+4. **WS2** -- build-push with treatment/control naming (after WS1 merges)
+5. **WS3B** -- harbor-eval.yaml task (after WS2 merges)
 
 ## Jira Tickets
 

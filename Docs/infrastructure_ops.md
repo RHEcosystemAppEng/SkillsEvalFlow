@@ -19,21 +19,21 @@ oc new-project ab-eval-flow --description="Agentic Eval Flow A/B evaluation pipe
 Apply manifests in this order to satisfy dependencies:
 
 ```bash
-# 1. RBAC — ServiceAccount, Roles, RoleBindings
+# 1. RBAC -- ServiceAccount, Roles, RoleBindings
 oc apply -f config/rbac.yaml
 
-# 2. Security — resource quotas
+# 2. Security -- resource quotas
 oc apply -f config/security/resource_quota.yaml
 
-# 3. Network policies — choose ONE based on LLM mode (see below)
+# 3. Network policies -- choose ONE based on LLM mode (see below)
 oc apply -f config/security/network_policy_default_deny.yaml
 oc apply -f config/security/network_policy_<mode>.yaml
 
-# 4. Storage — workspace and dead-letter PVCs
+# 4. Storage -- workspace and dead-letter PVCs
 oc apply -f config/storage/workspace_pvc.yaml
 oc apply -f config/storage/dead_letter_pvc.yaml
 
-# 5. Cleanup — create ConfigMap from script, then apply CronJob
+# 5. Cleanup -- create ConfigMap from script, then apply CronJob
 oc create configmap cleanup-script \
   --from-file=cleanup.sh=scripts/cleanup.sh \
   -n ab-eval-flow --dry-run=client -o yaml | oc apply -f -
@@ -50,7 +50,7 @@ oc create route edge el-submission-listener \
   --service=el-submission-listener \
   --port=http-listener
 
-# 9. (Optional) LiteLLM — only for Vertex AI mode
+# 9. (Optional) LiteLLM -- only for Vertex AI mode
 #    Creates a dedicated litellm ServiceAccount, Deployment, Service, and ConfigMap.
 #    Requires the litellm-credentials Secret (see LiteLLM Setup below).
 oc apply -f config/litellm/

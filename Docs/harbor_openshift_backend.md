@@ -1,8 +1,8 @@
-# Harbor OpenShift Backend — Handoff Document
+# Harbor OpenShift Backend -- Handoff Document
 
-> **Jira:** APPENG-4906 (Phase 4 — Harbor OpenShift Backend)
+> **Jira:** APPENG-4906 (Phase 4 -- Harbor OpenShift Backend)
 > **Target repo:** [RHEcosystemAppEng/skills_eval_corrections](https://github.com/RHEcosystemAppEng/skills_eval_corrections) (Harbor fork)
-> **Fork PRs:** [#1 — OpenShift environment backend](https://github.com/RHEcosystemAppEng/skills_eval_corrections/pull/1), [#2 — per-task environment_kwargs](https://github.com/RHEcosystemAppEng/skills_eval_corrections/pull/2)
+> **Fork PRs:** [#1 -- OpenShift environment backend](https://github.com/RHEcosystemAppEng/skills_eval_corrections/pull/1), [#2 -- per-task environment_kwargs](https://github.com/RHEcosystemAppEng/skills_eval_corrections/pull/2)
 > **Full spec:** See [implementation_plan.md](./implementation_plan.md), Phase 4
 
 ---
@@ -41,11 +41,11 @@ The GKE backend (`src/harbor/environments/gke.py`) implements the full
 
 ### `_build_and_push_image`
 - GKE: `gcloud builds submit` (Cloud Build)
-- **OpenShift — two modes:**
+- **OpenShift -- two modes:**
 
 | Mode | Behavior | When to use |
 |------|----------|-------------|
-| **Prebuilt** (`image_ref` kwarg set) | Verify image is pullable, skip building | Default pipeline flow — Tekton builds with Buildah |
+| **Prebuilt** (`image_ref` kwarg set) | Verify image is pullable, skip building | Default pipeline flow -- Tekton builds with Buildah |
 | **Local build** (`force_build: true`) | Build with podman, push to specified registry | Local dev, skipping the build-push Tekton step |
 
 **Prebuilt contract:**
@@ -60,7 +60,7 @@ The GKE backend (`src/harbor/environments/gke.py`) implements the full
 - **Kwargs:** `registry` (push target URL), `tls_verify` (default `"true"`)
 
 ### `start`, `stop`, `exec`, `upload_file/dir`, `download_file/dir`
-- Same K8s API patterns as GKE — the `kubernetes` Python client is identical
+- Same K8s API patterns as GKE -- the `kubernetes` Python client is identical
 
 ## Environment kwargs
 
@@ -71,9 +71,9 @@ global kwargs when set.
 | Kwarg | Description | Default |
 |-------|-------------|---------|
 | `namespace` | OpenShift namespace for trial Pods | Required |
-| `image_ref` | Digest-based image ref (prebuilt mode) | — |
-| `registry` | Push target URL (local-build mode) | — |
-| `cpu_request` | CPU request for trial Pods (e.g. `"250m"`) | — |
+| `image_ref` | Digest-based image ref (prebuilt mode) | -- |
+| `registry` | Push target URL (local-build mode) | -- |
+| `cpu_request` | CPU request for trial Pods (e.g. `"250m"`) | -- |
 | `tls_verify` | TLS verification for registry (e.g. `"false"`) | `"true"` |
 
 ### Per-task environment_kwargs (PR #2)
@@ -100,7 +100,7 @@ alternative if needed in the future.
 ## Pod Security Requirements
 
 Trial Pods run with OpenShift's default security constraints. The
-`readOnlyRootFilesystem` is intentionally **not** set — many agent
+`readOnlyRootFilesystem` is intentionally **not** set -- many agent
 workloads need filesystem writes. Instead, `HOME=/tmp` is injected to
 direct writes to a writable location.
 
@@ -110,7 +110,7 @@ Verify the target cluster uses `restricted-v2` SCC (OpenShift 4.11+).
 
 - **N = 20** attempts per variant (treatment + control = 40 total sessions)
 - Image refs come as params from the build-push Tekton task (digest-based)
-- LLM endpoint via environment variable — backend is agnostic to LLM access mode
+- LLM endpoint via environment variable -- backend is agnostic to LLM access mode
 - Configurable per-trial timeout and global evaluation timeout
 - Resource requests/limits per trial Pod
 
@@ -138,7 +138,7 @@ from interfering with regular REST calls in other coroutines.
 
 - **Unit tests:** Mock K8s API with `pytest` + `unittest.mock`. No live cluster needed.
 - **Integration tests:** Test against OpenShift developer sandbox (ROSA/OSD).
-  Do **not** use Kind/Minikube — they won't catch SCC/Routes differences.
+  Do **not** use Kind/Minikube -- they won't catch SCC/Routes differences.
 
 ## Tekton Task (in Agentic Eval Flow repo)
 
@@ -159,13 +159,13 @@ Harbor from the Agentic Eval Flow pipeline:
 - [x] Config examples for prebuilt, local-build, and per-task modes (PR #2)
 - [x] Unit tests with mocked K8s API
 - [ ] 40 trial Pods complete (20 treatment + 20 control) on live cluster
-- [ ] Cleanup verified — no stale Pods after evaluation
+- [ ] Cleanup verified -- no stale Pods after evaluation
 - [ ] Retry behavior validated for transient failures
 - [ ] Integration test passes on OpenShift sandbox
 
 ## LLM Access Modes (for reference)
 
-The backend doesn't need to know which mode is used — it just passes
+The backend doesn't need to know which mode is used -- it just passes
 env vars to trial Pods:
 
 | Mode | Env Var | Infrastructure |

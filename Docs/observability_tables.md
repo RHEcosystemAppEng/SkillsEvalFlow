@@ -28,7 +28,7 @@ These tables are populated automatically in the **store** step of the Tekton pip
 2. `store_results.py` reads `_metrics_checkpoint.json` → writes to `observability_metrics`
 3. The `_metrics_checkpoint.json` is created in the **test** phase finalize step from quality review token data
 
-No configuration needed — the `enable-scorecard` pipeline flag defaults to `true`.
+No configuration needed -- the `enable-scorecard` pipeline flag defaults to `true`.
 
 ---
 
@@ -39,7 +39,7 @@ One row per pipeline run. Stores the unified gate verdict combining all evaluati
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
 | `id` | UUID | No | Primary key, auto-generated |
-| `pipeline_run_id` | VARCHAR(255) | No | Tekton PipelineRun name. Unique — one scorecard per run |
+| `pipeline_run_id` | VARCHAR(255) | No | Tekton PipelineRun name. Unique -- one scorecard per run |
 | `submission_name` | VARCHAR(255) | No | Name of the evaluated skill/agent submission |
 | `eval_engine` | VARCHAR(50) | No | Evaluation engine used: harbor, ase, aeh, mcpchecker, a2a, both |
 | `recommendation` | VARCHAR(20) | No | Unified verdict: pass, warn, or fail |
@@ -106,7 +106,7 @@ One row per certification level per pipeline run. Maximum 3 rows per scorecard (
 
 **Indexes:** `scorecard_id`, `(level, passed)`
 
-**Constraints:** Unique on `(scorecard_id, level)` — prevents duplicate certification rows for the same level.
+**Constraints:** Unique on `(scorecard_id, level)` -- prevents duplicate certification rows for the same level.
 
 **Relationships:** Belongs to one `scorecard` (CASCADE delete on parent).
 
@@ -114,7 +114,7 @@ One row per certification level per pipeline run. Maximum 3 rows per scorecard (
 
 ## Table: `observability_metrics`
 
-One row per pipeline run attempt with aggregated LLM token usage and phase timing. Enables cost tracking and performance monitoring. Retries create additional rows with incrementing `attempt_number`. No foreign key to scorecards — metrics may outlive scorecard lifecycle.
+One row per pipeline run attempt with aggregated LLM token usage and phase timing. Enables cost tracking and performance monitoring. Retries create additional rows with incrementing `attempt_number`. No foreign key to scorecards -- metrics may outlive scorecard lifecycle.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
@@ -139,5 +139,5 @@ One row per pipeline run attempt with aggregated LLM token usage and phase timin
 
 **Indexes:** `submission_name`, `created_at`, `model_name`
 
-**Constraints:** Unique on `(pipeline_run_id, attempt_number)` — prevents duplicate metrics for the same run attempt.
+**Constraints:** Unique on `(pipeline_run_id, attempt_number)` -- prevents duplicate metrics for the same run attempt.
 

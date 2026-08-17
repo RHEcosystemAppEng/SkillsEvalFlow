@@ -2,7 +2,7 @@
 
 > **Jira:** APPENG-4985 (Results Persistence & Storage)
 > **Branch:** `APPENG-4985/results-persistence`
-> **Depends on:** APPENG-4907 (`abevalflow/report.py` — `AnalysisResult` model)
+> **Depends on:** APPENG-4907 (`abevalflow/report.py` -- `AnalysisResult` model)
 
 ---
 
@@ -12,7 +12,7 @@ Persist every A/B evaluation run to PostgreSQL so results are queryable, compara
 
 ---
 
-## Scope — What This Ticket Covers (Agentic Eval Flow side)
+## Scope -- What This Ticket Covers (Agentic Eval Flow side)
 
 | Deliverable | Description |
 |---|---|
@@ -21,12 +21,12 @@ Persist every A/B evaluation run to PostgreSQL so results are queryable, compara
 | `store_results.py` | CLI script: reads `report.json`, persists to PostgreSQL |
 | `query_results.py` | CLI script: historical queries (`list`, `latest`, `history`, `compare`) |
 | Observer protocol | Pluggable `ResultsObserver` interface for future backends |
-| Tekton task | `store-results.yaml` — runs after `analyze-report` |
+| Tekton task | `store-results.yaml` -- runs after `analyze-report` |
 | OpenShift manifests | PostgreSQL StatefulSet, Service, Secret template, PVC |
 | RBAC update | Pipeline SA gets read access to DB Secret |
 | Tests | Full coverage using SQLite in-memory (no PostgreSQL needed for CI) |
 
-## Scope — What This Ticket Does NOT Cover
+## Scope -- What This Ticket Does NOT Cover
 
 | Out of scope | Where it belongs |
 |---|---|
@@ -120,18 +120,18 @@ One row per trial. Enables drill-down queries.
 
 ---
 
-## 2. DB Engine — `abevalflow/db/engine.py`
+## 2. DB Engine -- `abevalflow/db/engine.py`
 
-- `get_engine(url: str | None = None) -> Engine` — creates SQLAlchemy engine from URL
-- `init_db(engine: Engine)` — `Base.metadata.create_all(engine)`, retries up to 5 times with exponential backoff on `OperationalError` (via `tenacity`) for cold-start resilience; non-transient errors (auth, SSL) fail immediately
-- `make_session(engine: Engine) -> sessionmaker[Session]` — returns a session factory bound to the given engine
+- `get_engine(url: str | None = None) -> Engine` -- creates SQLAlchemy engine from URL
+- `init_db(engine: Engine)` -- `Base.metadata.create_all(engine)`, retries up to 5 times with exponential backoff on `OperationalError` (via `tenacity`) for cold-start resilience; non-transient errors (auth, SSL) fail immediately
+- `make_session(engine: Engine) -> sessionmaker[Session]` -- returns a session factory bound to the given engine
 - Connection URL from `DATABASE_URL` env var
 - Format: `postgresql+psycopg://user:pass@host:5432/abevalflow`
 - Falls back to SQLite for local dev / testing
 
 ---
 
-## 3. Observer Protocol — `abevalflow/db/observer.py`
+## 3. Observer Protocol -- `abevalflow/db/observer.py`
 
 ```python
 from typing import Protocol
@@ -161,11 +161,11 @@ class ResultsObserver(Protocol):
 - `LANGFUSE_PUBLIC_KEY` set → load `LangfuseObserver` (future)
 - No env vars → no observers, PostgreSQL only
 
-**Error isolation:** Each observer runs in a `try/except` — observer failures are logged as warnings, never fail the pipeline.
+**Error isolation:** Each observer runs in a `try/except` -- observer failures are logged as warnings, never fail the pipeline.
 
 ---
 
-## 4. Store Script — `scripts/store_results.py`
+## 4. Store Script -- `scripts/store_results.py`
 
 ```
 python scripts/store_results.py \
@@ -179,8 +179,8 @@ which emits a directory containing `report.json` and `report.md`.
 Logic:
 1. Load and validate `{report-dir}/report.json` via `AnalysisResult.model_validate_json()`
 2. Map `AnalysisResult` → `EvaluationRun` row (flatten provenance + summary)
-3. Map each trial → `Trial` row (persist from `TrialResult.model_dump()` which includes the computed `passed` field — same rule as the Pydantic model)
-4. Single transaction — all-or-nothing
+3. Map each trial → `Trial` row (persist from `TrialResult.model_dump()` which includes the computed `passed` field -- same rule as the Pydantic model)
+4. Single transaction -- all-or-nothing
 5. **Idempotent:** if `pipeline_run_id` already exists, log warning and skip
 6. After commit, invoke all registered `ResultsObserver` instances
 7. Exit 0 on success, exit 1 on failure
@@ -195,7 +195,7 @@ the host/db name only (masked connection string).
 
 ---
 
-## 5. Query Script — `scripts/query_results.py`
+## 5. Query Script -- `scripts/query_results.py`
 
 ```
 python scripts/query_results.py list
@@ -215,7 +215,7 @@ Output: formatted table to stdout (simple column alignment, no heavy dependency)
 
 ---
 
-## 6. Tekton Task — `pipeline/tasks/store-results.yaml`
+## 6. Tekton Task -- `pipeline/tasks/store-results.yaml`
 
 - Runs after `analyze-report` in the pipeline
 - Params: `report-dir`, `submission-name`, `pipeline-run-id`, `pipeline-repo-url`, `pipeline-repo-revision`
@@ -228,13 +228,13 @@ Output: formatted table to stdout (simple column alignment, no heavy dependency)
 
 ---
 
-## 7. OpenShift Manifests — `config/postgres/`
+## 7. OpenShift Manifests -- `config/postgres/`
 
 | File | Content |
 |---|---|
 | `config/postgres/statefulset.yaml` | PostgreSQL 16 StatefulSet (single replica MVP) with inline `volumeClaimTemplates` (10Gi) |
 | `config/postgres/service.yaml` | ClusterIP Service (`ab-eval-db:5432`) |
-| `config/postgres/secret.yaml` | Secret template (placeholder values — never real credentials) |
+| `config/postgres/secret.yaml` | Secret template (placeholder values -- never real credentials) |
 
 Update `config/rbac.yaml`: grant pipeline SA read access to `ab-eval-db-credentials` Secret.
 
@@ -262,8 +262,8 @@ Add to `pyproject.toml`:
 | `tests/test_store_results.py` | Store, idempotency, observer invocation, error handling |
 | `tests/test_query_results.py` | All subcommands against seeded data |
 
-All unit tests use **SQLite in-memory / file-based** — no PostgreSQL required for CI.
-An optional PostgreSQL integration test (deferred — add `@pytest.mark.skipif`
+All unit tests use **SQLite in-memory / file-based** -- no PostgreSQL required for CI.
+An optional PostgreSQL integration test (deferred -- add `@pytest.mark.skipif`
 when PostgreSQL is deployed) would validate dialect-specific behavior (JSONB, UUID).
 
 ---
@@ -274,7 +274,7 @@ when PostgreSQL is deployed) would validate dialect-specific behavior (JSONB, UU
 
 - **Prefer taking from `main`** once APPENG-4907 merges
 - **Cherry-picked** onto this branch as commit `9567429` (from `APPENG-4907/analysis-reporting`)
-- Both branches produce the identical file — git auto-merges cleanly when both land on main
+- Both branches produce the identical file -- git auto-merges cleanly when both land on main
 - The store script imports `AnalysisResult` directly for type-safe validation at ingest time
 
 ---
@@ -307,19 +307,19 @@ when PostgreSQL is deployed) would validate dialect-specific behavior (JSONB, UU
 
 ---
 
-## Harbor Side — Observability Integration Points
+## Harbor Side -- Observability Integration Points
 
 > This section documents what the Harbor fork needs for full observability.
-> These changes are **not** part of APPENG-4985 — they belong in the Harbor fork repo.
+> These changes are **not** part of APPENG-4985 -- they belong in the Harbor fork repo.
 
 ### Layer 1: Trial-Level LLM Tracing (Harbor Fork)
 
 Each Harbor trial pod runs an LLM agent. To trace those calls:
 
-1. **OTel SDK in trial pods** — add `opentelemetry-sdk` + `opentelemetry-exporter-otlp` to the trial container's dependencies
-2. **Configure via env vars** — pass `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME` through Harbor's `environment_kwargs` or task config
-3. **Auto-instrumentation** — LiteLLM (if used) has OTel auto-instrumentation; otherwise manual spans around agent calls
-4. **Backend routing** — the OTel collector routes traces to whichever backend is deployed:
+1. **OTel SDK in trial pods** -- add `opentelemetry-sdk` + `opentelemetry-exporter-otlp` to the trial container's dependencies
+2. **Configure via env vars** -- pass `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME` through Harbor's `environment_kwargs` or task config
+3. **Auto-instrumentation** -- LiteLLM (if used) has OTel auto-instrumentation; otherwise manual spans around agent calls
+4. **Backend routing** -- the OTel collector routes traces to whichever backend is deployed:
    - Langfuse (supports OTel ingestion)
    - MLflow (uses OTel internally for tracing)
    - Grafana Tempo / Jaeger (native OTel backends)
@@ -328,9 +328,9 @@ Each Harbor trial pod runs an LLM agent. To trace those calls:
 
 Harbor already writes `result.json` per trial with `verifier_result.rewards.reward`, timing, and token usage. To surface aggregate metrics:
 
-1. **Post-job callback** — after all trials complete, Harbor could call a webhook or write a summary JSON
-2. **MLflow integration** — the existing `log_to_mlflow.py` pattern (currently a standalone script in the local clone) could be integrated into Harbor's CLI as `harbor log --backend mlflow`
-3. **OTel metrics** — emit gauge/counter metrics for pass rate, mean reward, trial count using OTel Metrics API
+1. **Post-job callback** -- after all trials complete, Harbor could call a webhook or write a summary JSON
+2. **MLflow integration** -- the existing `log_to_mlflow.py` pattern (currently a standalone script in the local clone) could be integrated into Harbor's CLI as `harbor log --backend mlflow`
+3. **OTel metrics** -- emit gauge/counter metrics for pass rate, mean reward, trial count using OTel Metrics API
 
 ### Layer 3: Connecting Both Layers
 

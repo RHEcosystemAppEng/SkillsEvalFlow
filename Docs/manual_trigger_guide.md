@@ -1,4 +1,4 @@
-# Manual Trigger Guide — Harbor, ASE & A2A
+# Manual Trigger Guide -- Harbor, ASE & A2A
 
 Quick reference for manually triggering evaluations against the CI and monitoring pipelines.
 
@@ -28,12 +28,12 @@ A2A monitoring runs are triggered automatically by three sources (plus manual Pi
 
 See [A2A Trigger Types](#a2a-trigger-types) below for full PipelineRun examples.
 
-**Working examples — Monitoring pipeline:**
+**Working examples -- Monitoring pipeline:**
 - Harbor: https://console-openshift-console.apps.cn-ai-lab.2vn8.p1.openshiftapps.com/k8s/ns/ab-eval-flow/tekton.dev~v1~PipelineRun/harbor-verify-t6spp/logs?taskName=analyze-and-check-degradation
 - ASE: https://console-openshift-console.apps.cn-ai-lab.2vn8.p1.openshiftapps.com/k8s/ns/ab-eval-flow/tekton.dev~v1~PipelineRun/ase-verify-sfmlw/logs?taskName=analyze-and-check-degradation
 - A2A: https://console-openshift-console.apps.cn-ai-lab.2vn8.p1.openshiftapps.com/k8s/ns/ab-eval-flow/tekton.dev~v1~PipelineRun/a2a-local-env-x8nbj/logs?taskName=analyze-and-check-degradation
 
-**Working examples — CI pipeline:**
+**Working examples -- CI pipeline:**
 - Harbor (all files): https://console-openshift-console.apps.cn-ai-lab.2vn8.p1.openshiftapps.com/k8s/ns/ab-eval-flow/tekton.dev~v1~PipelineRun/ci-harbor-with-instr-p92vj
 - Harbor (AI generation): https://console-openshift-console.apps.cn-ai-lab.2vn8.p1.openshiftapps.com/k8s/ns/ab-eval-flow/tekton.dev~v1~PipelineRun/ci-harbor-gen-instr-mn425
 - ASE (all files): https://console-openshift-console.apps.cn-ai-lab.2vn8.p1.openshiftapps.com/k8s/ns/ab-eval-flow/tekton.dev~v1~PipelineRun/ci-ase-with-evals-7thhz
@@ -55,7 +55,7 @@ Runs evaluations with degradation check and Slack notifications. No security sca
 
 ## Harbor Run (hello-world)
 
-Uses `skill-submissions/hello-world` — a minimal Harbor task submission.
+Uses `skill-submissions/hello-world` -- a minimal Harbor task submission.
 
 ```bash
 oc create -f - <<'YAML'
@@ -101,7 +101,7 @@ YAML
 
 ## ASE Run (hello-world-full)
 
-Uses `skill-submissions/hello-world-full` — a skill submission with `evals.json`.
+Uses `skill-submissions/hello-world-full` -- a skill submission with `evals.json`.
 
 ```bash
 oc create -f - <<'YAML'
@@ -141,7 +141,7 @@ YAML
 
 ## A2A Run (lightspeed-agent)
 
-Uses `Agentic Eval Flow/a2a-agent-eval` — evaluates the deployed Lightspeed A2A agent.
+Uses `Agentic Eval Flow/a2a-agent-eval` -- evaluates the deployed Lightspeed A2A agent.
 The agent must already be running at `http://lightspeed-agent.ab-eval-flow.svc:8000`.
 
 ```bash
@@ -264,7 +264,7 @@ spec:
 YAML
 ```
 
-Example for ephemeral deploy (Quay webhook equivalent — evaluates a specific image tag):
+Example for ephemeral deploy (Quay webhook equivalent -- evaluates a specific image tag):
 
 ```bash
 oc create -f - <<'YAML'
@@ -316,9 +316,9 @@ YAML
 Full evaluation run: prepare → test → evaluate → analyze → store. No degradation check or Slack.
 Security scan and quality review can be enabled/disabled per run.
 
-## CI Harbor — all files present (no generation)
+## CI Harbor -- all files present (no generation)
 
-Uses `skill-submissions/hello-world` — has `instruction.md` and `tests/`. Generation is enabled
+Uses `skill-submissions/hello-world` -- has `instruction.md` and `tests/`. Generation is enabled
 but skips because files already exist. Expects no `generated/` folder in MinIO.
 
 ```bash
@@ -367,9 +367,9 @@ YAML
 
 ---
 
-## CI Harbor — AI generation (no instruction.md)
+## CI Harbor -- AI generation (no instruction.md)
 
-Uses `skill-submissions/hello-world-no-instr` (PR #106) — only has `skills/SKILL.md` and
+Uses `skill-submissions/hello-world-no-instr` (PR #106) -- only has `skills/SKILL.md` and
 `metadata.yaml` with `generation_mode: ai`. Pipeline generates `instruction.md`,
 `test_outputs.py`, and `llm_judge.py`.
 
@@ -419,9 +419,9 @@ YAML
 
 ---
 
-## CI ASE — all files present (no generation)
+## CI ASE -- all files present (no generation)
 
-Uses `skill-submissions/hello-world-full` — has `evals/evals.json`. Expects no `generated/` folder.
+Uses `skill-submissions/hello-world-full` -- has `evals/evals.json`. Expects no `generated/` folder.
 
 ```bash
 oc create -f - <<'YAML'
@@ -465,9 +465,9 @@ YAML
 
 ---
 
-## CI ASE — AI generation (no evals.json)
+## CI ASE -- AI generation (no evals.json)
 
-Uses `skill-submissions/hello-world-minimal` (PR #104) — only has `SKILL.md`. Pipeline generates
+Uses `skill-submissions/hello-world-minimal` (PR #104) -- only has `SKILL.md`. Pipeline generates
 `evals/evals.json` with `_generated_by: "ai"`.
 
 ```bash
@@ -512,7 +512,7 @@ YAML
 
 ---
 
-## CI MCPChecker — ExploitIQ
+## CI MCPChecker -- ExploitIQ
 
 Uses `skill-submissions/exploitiq-mcp-eval` (branch `test/mcpchecker-exploitiq`).
 Requires `exploitiq-mcp-credentials` secret with a fresh `oc whoami -t` token from `ai-dev03`.
@@ -638,8 +638,8 @@ oc get pipelinerun -n ab-eval-flow --no-headers | grep "False" \
 ## Slack Notifications
 
 Every completed monitoring run sends a Slack message to the team channel:
-- ✅ `[ENGINE] Monitoring Pass` — score + baseline + ratio
-- 🚨 `[ENGINE] Performance Degradation Detected` — score dropped below threshold
+- ✅ `[ENGINE] Monitoring Pass` -- score + baseline + ratio
+- 🚨 `[ENGINE] Performance Degradation Detected` -- score dropped below threshold
 
 The Run ID in the message is a clickable link to the OpenShift console.
 
@@ -647,7 +647,7 @@ The Run ID in the message is a clickable link to the OpenShift console.
 
 ## Active Image
 
-All eval steps (`harbor-eval`, `a2a-eval`) use `eval-base:local-env` — built from
+All eval steps (`harbor-eval`, `a2a-eval`) use `eval-base:local-env` -- built from
 Harbor `feature/local-environment` branch with `claude-code` pre-installed.
 This is the canonical image; do not revert to `:latest`.
 
@@ -661,7 +661,7 @@ This is the canonical image; do not revert to `:latest`.
 | `NonZeroAgentExitCodeError` in Harbor eval | Local registry `eval-base` out of sync with main registry | Re-run the skopeo sync (see `infrastructure_ops.md`) |
 | `Generated files: []` despite generation running | LLM call failed silently | Check stderr output in logs (now shown on failure) |
 | `generated/` folder missing despite AI generation | Files already existed (no AI header) or generation failed | Check `STEP-GENERATE-TESTS` logs for WARNING output |
-| `debug/` folder missing in MinIO for Harbor runs | `results-dir` not passed to store task | Fixed in PR #32 — ensure `pipeline-repo-revision: main` |
+| `debug/` folder missing in MinIO for Harbor runs | `results-dir` not passed to store task | Fixed in PR #32 -- ensure `pipeline-repo-revision: main` |
 | Degradation shows `0.00% → 0.00%` | `store` runs after `check-degradation`; monitor reads old DB runs | Fixed: current score passed from `report.json` via `--current-score` |
 | No Slack alert despite degradation | `\|\|` block caught exit code 1 from `monitor.py` | Fixed: only exit code 2 (error) is non-blocking now |
 | Slack Run ID shows `None` | `--run-id` not passed to `monitor.py` | Fixed: `--run-id "$(params.pipeline-run-id)"` now wired in task |

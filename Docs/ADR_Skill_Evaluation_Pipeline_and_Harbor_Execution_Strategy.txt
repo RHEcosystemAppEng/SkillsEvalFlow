@@ -10,7 +10,7 @@ The objective is to establish an automated pipeline for evaluating skill submiss
 
 2. Architectural Details (Skill Evaluation Pipeline Workflow)
 The pipeline is an 8-step process orchestrated by Tekton.
-Step 1 — Submission
+Step 1 -- Submission
 * Trigger: Git + Tekton EventListener. A user pushes a skill directory to a branch in a dedicated repository (e.g., skill-eval-submissions).
 * Submission Contract: The directory follows this structure:
 my-skill-name/
@@ -23,7 +23,7 @@ Step 1 — Submission
 ├── supportive/       # optional: mock MCPs, data files
 └── metadata.yaml     # user-provided: description, persona, etc.
 * Tools: GitHub, Tekton Triggers (EventListener + TriggerTemplate), and Tekton Interceptors (to filter on pushes to submissions/ path).
-Step 2 — Validation (Tekton Task)
+Step 2 -- Validation (Tekton Task)
 
 
 A container runs validation checks on the submitted files:
@@ -33,7 +33,7 @@ A container runs validation checks on the submitted files:
 * Validate metadata.yaml schema (pydantic or jsonschema).
 * Check supportive files are a reasonable size (<50MB total).
 * Tools: Custom Tekton Task with a Python image, using ubi9/python-311 as the base image.
-Step 3 — Scaffold (Tekton Task)
+Step 3 -- Scaffold (Tekton Task)
 
 
 Generates the files the user shouldn't have to write, including a templated Dockerfile (based on supportive files) and creating needed files like test.sh and task.toml.
@@ -41,13 +41,13 @@ Generates the files the user shouldn't have to write, including a templated Dock
    * A skilled variant (tasks/my-skill-name/) with the Dockerfile configured to COPY skills, docs.
    * An unskilled variant (tasks-no-skills/my-skill-name/) with a Dockerfile that excludes skills/docs but includes supportive infra.
 * Tools: Custom Tekton Task with Python/Jinja2 for templating. Store Dockerfile/test.sh templates in a ConfigMap or in the pipeline repo.
-Step 4 & 5 — Build & Push Images (Tekton Tasks)
+Step 4 & 5 -- Build & Push Images (Tekton Tasks)
 
 
 Build both the skilled and unskilled container images and push them to a registry.
 * Tools: docker buildx or Buildah.
 * Registry Options: Quay.io.
-Step 6 — Run Harbor Evaluation (Tekton Task)
+Step 6 -- Run Harbor Evaluation (Tekton Task)
 
 
 This is the core evaluation step. Harbor must run N attempts per variant (skilled + unskilled), where each attempt spins up a container from the pre-built image, runs the agent and the verifier inside it, and aggregates results. There are two viable approaches for how Harbor executes these trials on OpenShift.
@@ -61,9 +61,9 @@ Approach
 	Requires privileged access or nested containers to function; introduces security concerns.
 	OpenShift Backend for Harbor
 	Harbor uses the Kubernetes API to create, manage, and clean up lightweight, unprivileged Pods for each trial, replacing Google-specific calls[c][d].
-	Creates lightweight, regular Pods—no nesting, no privileges; standard RBAC; OpenShift can see, schedule, and resource-limit each trial Pod independently; trial Pod logs are visible in the OpenShift Console like any other workload.
+	Creates lightweight, regular Pods--no nesting, no privileges; standard RBAC; OpenShift can see, schedule, and resource-limit each trial Pod independently; trial Pod logs are visible in the OpenShift Console like any other workload.
 	Requires writing one new file in Harbor (the OpenShift environment backend) to replace the three Google-specific functions.
-	Step 7 — Analyze & Report (Tekton Task)
+	Step 7 -- Analyze & Report (Tekton Task)
 
 
 Runs existing analysis and plot scripts to generate a summary report (markdown or HTML) that includes:
@@ -72,7 +72,7 @@ Runs existing analysis and plot scripts to generate a summary report (markdown o
 * Statistical significance (p-value).
 * Heatmap figures embedded.
 * Links to detailed logs.
-Step 8 — Publish & Store (Tekton Task)
+Step 8 -- Publish & Store (Tekton Task)
 
 
 Finalizes the publishing and storage of evaluation results.
@@ -92,7 +92,7 @@ The consequences and required dependencies depend on the chosen approach:
       * Cons: Requires privileged access or nested containers to function; introduces security concerns.
       * Dependencies: Podman, OpenShift Secrets for credentials/volume mounting.
    * If adopting "OpenShift Backend for Harbor":
-      * Pros: Creates lightweight, regular Pods—no nesting, no privileges; utilizes standard RBAC; individual trial Pods are fully visible, schedulable, and resource-limited by OpenShift.
+      * Pros: Creates lightweight, regular Pods--no nesting, no privileges; utilizes standard RBAC; individual trial Pods are fully visible, schedulable, and resource-limited by OpenShift.
       * Cons: Requires writing one new file in Harbor (the OpenShift environment backend) to replace three Google-specific functions.
       * Dependencies: Custom Harbor Backend implementation (a new file).
 4. Operational and Security Considerations
@@ -119,7 +119,7 @@ The consequences and required dependencies depend on the chosen approach:
 Notes and Comments
 Following the ADR meeting, here is a concise summary of the Tessl investigation:
 * Harbor (The Local Tool): Harbor is an open-source CLI that lets you run and evaluate agents locally using Podman containers and "behind the scenes" Tessl and Harbor run the same backend (by Tessl).
-* Tessl Cloud (The Automated Tool): This cloud service creates test scenarios and runs your agent twice—once as a baseline and once with context—to show you the performance difference (the "delta") as with Harbor.
+* Tessl Cloud (The Automated Tool): This cloud service creates test scenarios and runs your agent twice--once as a baseline and once with context--to show you the performance difference (the "delta") as with Harbor.
 * No Local Tessl: There is no local version of Tessl, it functions as a cloud wrapper where the CLI handles the connection, but the server does all the work.
 * Infrastructure Limits: You cannot self-host Tessl or use your own cloud infrastructure for these runs.
 * Model Restrictions: The platform currently only supports Claude models (via api key so it rules out as i understand the vertex solution we use) and does not allow you to bring outside models like Qwen.
@@ -145,9 +145,9 @@ continuous performance monitoring
 
 
 From the Harbor GKE backend : 
-_init_client — authenticates to the cluster using gcloud
-_build_and_push_image — builds and pushes the container image using gcloud
-_image_exists — checks if the image already exists in the registry using gcloud
+_init_client -- authenticates to the cluster using gcloud
+_build_and_push_image -- builds and pushes the container image using gcloud
+_image_exists -- checks if the image already exists in the registry using gcloud
 
 
 Everything else from what i saw is ok and no need to fix.

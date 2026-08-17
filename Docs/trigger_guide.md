@@ -115,10 +115,10 @@ use the ASE format:
 submissions/<skill-name>/
 ├── metadata.yaml              # Required
 ├── skills/
-│   └── SKILL.md               # Required — skill definition
+│   └── SKILL.md               # Required -- skill definition
 └── evals/
-    ├── evals.json             # Optional — generated if missing
-    └── files/                 # Optional — test data files
+    ├── evals.json             # Optional -- generated if missing
+    └── files/                 # Optional -- test data files
 ```
 
 Trigger with `eval-engine=ase`:
@@ -144,11 +144,11 @@ MCP tools correctly and produce valid outputs.
 
 ```
 submissions/<name>/
-├── metadata.yaml              # Required — eval_engine: mcpchecker
-├── eval.yaml                  # Required — MCPChecker evaluation config
-├── mcp-config.yaml            # Required — MCP server connection settings
+├── metadata.yaml              # Required -- eval_engine: mcpchecker
+├── eval.yaml                  # Required -- MCPChecker evaluation config
+├── mcp-config.yaml            # Required -- MCP server connection settings
 └── tasks/
-    └── *.yaml                 # Required — at least one task definition
+    └── *.yaml                 # Required -- at least one task definition
 ```
 
 **eval.yaml example:**
@@ -215,12 +215,12 @@ from other agents using standardized A2A messaging.
 
 ```
 submissions/<name>/
-├── metadata.yaml              # Required — eval_engine: a2a
-├── agent_card.json            # Required — A2A agent card
+├── metadata.yaml              # Required -- eval_engine: a2a
+├── agent_card.json            # Required -- A2A agent card
 ├── skills/
-│   └── SKILL.md               # Required — skill definition
+│   └── SKILL.md               # Required -- skill definition
 └── evals/
-    └── evals.json             # Optional — evaluation scenarios (generated if missing)
+    └── evals.json             # Optional -- evaluation scenarios (generated if missing)
 ```
 
 **agent_card.json example:**
@@ -279,14 +279,14 @@ OpenShift (OpenShiftEnvironment).
 
 ```
 submissions/<name>/
-├── metadata.yaml              # Required — eval_engine: aeh
-├── eval.yaml                  # Required — AEH evaluation config (judges, thresholds)
-├── skills/                    # Optional — nested or flat SKILL.md for treatment
+├── metadata.yaml              # Required -- eval_engine: aeh
+├── eval.yaml                  # Required -- AEH evaluation config (judges, thresholds)
+├── skills/                    # Optional -- nested or flat SKILL.md for treatment
 │   └── …/SKILL.md
 └── cases/
     └── case-001/
-        ├── input.yaml         # Required — task prompt / agent instruction
-        └── annotations.yaml   # Optional — ground truth for judges
+        ├── input.yaml         # Required -- task prompt / agent instruction
+        └── annotations.yaml   # Optional -- ground truth for judges
 ```
 
 **eval.yaml essentials** (LiteLLM model ids, not Anthropic native names):
@@ -397,7 +397,7 @@ AEH-specific parameters:
 - `aeh-mode`: `single` (default) or `pairwise`
 - `aeh-control-config` / `aeh-treatment-config`: Pairwise config filenames (defaults: `eval-control.yaml` / `eval-treatment.yaml`)
 - `aeh-image`: Harbor trial image (use `quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3` or newer)
-- `aeh-runner`: Execution backend — currently `harbor` only
+- `aeh-runner`: Execution backend -- currently `harbor` only
 
 **Note on execution backends:**
 - **harbor** (default): Containerized execution in OpenShift trial pods via AEH’s OpenShiftEnvironment.
@@ -413,9 +413,9 @@ Pairwise runs control then treatment on the same cases, then `score.py pairwise`
 
 ```
 submissions/<name>/
-├── metadata.yaml              # Required — eval_engine: aeh
-├── eval-control.yaml          # Required — control/baseline (often skill: "")
-├── eval-treatment.yaml        # Required — treatment (with skill package)
+├── metadata.yaml              # Required -- eval_engine: aeh
+├── eval-control.yaml          # Required -- control/baseline (often skill: "")
+├── eval-treatment.yaml        # Required -- treatment (with skill package)
 ├── skills/<name>/SKILL.md     # Treatment skill (optional nested layout)
 └── cases/
     └── case-001/
@@ -424,7 +424,7 @@ submissions/<name>/
 
 Both configs must share the same `skill:` namespace used for
 `$AGENT_EVAL_RUNS_DIR/<skill>/<run-id>/`. Control may set `skill: ""` for an
-unskilled baseline while treatment sets the real skill package name — the
+unskilled baseline while treatment sets the real skill package name -- the
 pipeline still keys runs under the treatment skill name.
 
 **outputs:** is required when using a pairwise LLM judge (artifacts must be
@@ -487,7 +487,7 @@ YAML
 | `wins_a` | Treatment preferred |
 | `wins_b` | Control preferred |
 | `ties` | No preference |
-| `win_rate` | `wins_a / (wins_a + wins_b + ties)` — ties are non-wins |
+| `win_rate` | `wins_a / (wins_a + wins_b + ties)` -- ties are non-wins |
 
 Recommendation: pass when treatment wins ≥50% of cases, **or** when the run is
 all-ties (no decisive losses). Scores still report the honest `win_rate` (e.g.
@@ -516,7 +516,7 @@ instruction and tests automatically, set `generation_mode: ai` in
 submissions/<skill-name>/
 ├── metadata.yaml              # Must include: generation_mode: ai
 └── skills/
-    └── SKILL.md               # Required — the pipeline generates the rest
+    └── SKILL.md               # Required -- the pipeline generates the rest
 ```
 
 **Harbor mode:** The pipeline will use an LLM to generate `instruction.md` and
@@ -593,14 +593,14 @@ gate_policy:
 ```
 
 Gate modes:
-- `disabled` — Gate is skipped entirely
-- `warn` — Gate runs but failures don't block the pipeline
-- `block` — Gate failures cause the scorecard to fail
+- `disabled` -- Gate is skipped entirely
+- `warn` -- Gate runs but failures don't block the pipeline
+- `block` -- Gate failures cause the scorecard to fail
 
 Combination modes:
-- `all_pass` — All blocking gates must pass (default)
-- `any_pass` — At least one blocking gate must pass
-- `weighted` — Weighted average of scores (≥0.7 pass, 0.5-0.7 warn, <0.5 fail)
+- `all_pass` -- All blocking gates must pass (default)
+- `any_pass` -- At least one blocking gate must pass
+- `weighted` -- Weighted average of scores (≥0.7 pass, 0.5-0.7 warn, <0.5 fail)
 
 For Compass Facts integration (pushing evaluation results to Red Hat Compass):
 
@@ -651,7 +651,7 @@ that returns a personalized greeting.
 ### skills/SKILL.md (required)
 
 The skill file that will be loaded into the agent during the **treatment**
-runs. This is what you're evaluating — the guidance that should make the
+runs. This is what you're evaluating -- the guidance that should make the
 agent perform better. Example:
 
 ```markdown
@@ -749,18 +749,18 @@ Typical runtime: **5-30 minutes** depending on evaluation engine and task comple
 - **Tekton results:** task outputs available in PipelineRun status
 
 **MinIO (S3 object storage):**
-- `report.json` / `report.md` — evaluation report with pass rates, uplift, p-values
-- `scorecard.json` — unified verdict combining all evaluation gates (see below)
-- `security-scan.json` / `security-scan.sarif` — security scan findings
-- `generated/` — AI-generated files (instruction.md, test_outputs.py, evals.json)
-- `debug/` — engine-specific trial / run trees
+- `report.json` / `report.md` -- evaluation report with pass rates, uplift, p-values
+- `scorecard.json` -- unified verdict combining all evaluation gates (see below)
+- `security-scan.json` / `security-scan.sarif` -- security scan findings
+- `generated/` -- AI-generated files (instruction.md, test_outputs.py, evals.json)
+- `debug/` -- engine-specific trial / run trees
   - **Harbor / A2A:** `debug/` trial trees (`agent/`, `verifier/`, …)
   - **AEH:** `debug/harbor/{control,treatment}/<timestamp>/` (raw Harbor jobs)
     and `debug/aeh/<run-id>/` (`summary.yaml`, `report.html`, `run_result.json`, `cases/`)
 
 **PostgreSQL database:**
-- `analysis_results` table — evaluation summaries (pass rates, uplift, p-values)
-- `security_scans` table — security scan results per pipeline run
+- `analysis_results` table -- evaluation summaries (pass rates, uplift, p-values)
+- `security_scans` table -- security scan results per pipeline run
 - Historical results queryable via `scripts/query_results.py`
 
 ### Understanding the Scorecard
@@ -780,9 +780,9 @@ Each gate produces:
 - `findings`: list of issues found (for security/quality gates)
 
 The `scorecard.json` combines all gate results into a single recommendation:
-- **pass** — All blocking gates passed
-- **warn** — Warning gates failed but no blocking gates failed
-- **fail** — One or more blocking gates failed
+- **pass** -- All blocking gates passed
+- **warn** -- Warning gates failed but no blocking gates failed
+- **fail** -- One or more blocking gates failed
 
 Example scorecard output:
 ```json

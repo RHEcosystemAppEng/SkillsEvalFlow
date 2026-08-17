@@ -1,7 +1,7 @@
-# Harbor Fork — Integration Requirements for Agentic Eval Flow
+# Harbor Fork -- Integration Requirements for Agentic Eval Flow
 
 > **Target repo:** [RHEcosystemAppEng/skills_eval_corrections](https://github.com/RHEcosystemAppEng/skills_eval_corrections)
-> **Open PR:** [#1 — feat: add OpenShift environment backend](https://github.com/RHEcosystemAppEng/skills_eval_corrections/pull/1)
+> **Open PR:** [#1 -- feat: add OpenShift environment backend](https://github.com/RHEcosystemAppEng/skills_eval_corrections/pull/1)
 > **Agentic Eval Flow branch:** `APPENG-4906/harbor-eval-task`
 
 ---
@@ -103,7 +103,7 @@ The config generator extracts these fields from `SubmissionMetadata`:
 The fork's `OpenShiftEnvironment` must handle the full trial lifecycle when
 invoked with `--env openshift` (or `environment.type: openshift` in config):
 
-- Accept `image_ref` via `environment.kwargs` — verify the image is pullable,
+- Accept `image_ref` via `environment.kwargs` -- verify the image is pullable,
   skip building
 - Create trial Pods with the pre-built image
 - Execute agent + verifier inside the Pod via `exec`
@@ -135,7 +135,7 @@ Agentic Eval Flow's pass-rate parser expects:
 }
 ```
 
-Where `reward > 0.0` means pass. This is Harbor's standard format — no change
+Where `reward > 0.0` means pass. This is Harbor's standard format -- no change
 needed, but any deviation would break the parser.
 
 ### Implemented (fork PR #2)
@@ -172,7 +172,7 @@ the actual implementation in PR #1. These items should be updated:
 |---------|-------------------|---------|
 | File path | `openshift_environment.py` | `openshift.py` |
 | Build modes | `_build_and_push_image` is no-op only | Supports pre-built (`--ek image_ref=`) AND local podman build |
-| Pod security | `readOnlyRootFilesystem: true` | Intentionally unset — many agent workloads need writes; `HOME=/tmp` is injected instead |
+| Pod security | `readOnlyRootFilesystem: true` | Intentionally unset -- many agent workloads need writes; `HOME=/tmp` is injected instead |
 | RBAC table | ConfigMaps, Secrets, PVCs, ImageStreams | Only Pods + exec + Secrets used in practice |
 | Naming | "skilled / unskilled" | "treatment / control" |
 | Trial count | "20 skilled + 20 unskilled" | "20 treatment + 20 control" |
@@ -182,6 +182,6 @@ the actual implementation in PR #1. These items should be updated:
 ### Additional Notes
 
 - The OpenShift backend supports a `cpu_request` kwarg (`--ek cpu_request=<val>`)
-  for clusters with tight resource constraints — not documented in the handoff doc.
+  for clusters with tight resource constraints -- not documented in the handoff doc.
 - The `--ek registry=<url>` kwarg enables local podman build+push to a specified
-  registry — also undocumented.
+  registry -- also undocumented.

@@ -10,7 +10,7 @@ Build an automated, Tekton-orchestrated pipeline on OpenShift that accepts skill
 
 ### Non-Goals
 
-- Tessl Cloud integration — Tessl has no self-hosted option, only supports Claude via API key (not Vertex), and pricing is uncertain. Harbor (open-source, self-hostable) is the chosen evaluation engine.
+- Tessl Cloud integration -- Tessl has no self-hosted option, only supports Claude via API key (not Vertex), and pricing is uncertain. Harbor (open-source, self-hostable) is the chosen evaluation engine.
 - Tessl-driven evaluation runs are out of scope for this pipeline; any future integration would require a separate ADR.
 
 ### Two-Repository Model (ADR Decision #1)
@@ -22,7 +22,7 @@ This pipeline spans two repositories:
 | **[Agentic Eval Flow](https://github.com/RHEcosystemAppEng/agentic_eval_flow)** (this repo) | Pipeline definitions, scripts, templates, config | Tekton YAML, Python scripts, Jinja2 templates, Harbor backend |
 | **[agentic-collections](https://github.com/RHEcosystemAppEng/agentic-collections)** | Skills, tasks, tests (post-evaluation) | Persona-based plugins (`rh-sre`, `rh-developer`, `ocp-admin`, etc.), 100+ skills |
 
-The `tasks-treatment/` and `tasks-control/` directories generated during scaffolding are **ephemeral workspace artifacts** — they exist only during a pipeline run, not as permanent directories in either repo.
+The `tasks-treatment/` and `tasks-control/` directories generated during scaffolding are **ephemeral workspace artifacts** -- they exist only during a pipeline run, not as permanent directories in either repo.
 
 ### Harbor Fork
 
@@ -38,16 +38,16 @@ The ADR originally specified Google Vertex AI + LiteLLM proxy. Since then, two a
 | **opencode + self-hosted** | opencode wrapper | Local/self-hosted model (e.g., vLLM, Ollama) | No |
 | **Vertex AI + proxy** | Claude Code | Google Vertex AI via LiteLLM proxy | Yes |
 
-LiteLLM is **optional infrastructure**, needed only for the Vertex AI path. The pipeline and Harbor backend should be agnostic to the LLM access mode — the agent inside the trial container is configured via environment variables.
+LiteLLM is **optional infrastructure**, needed only for the Vertex AI path. The pipeline and Harbor backend should be agnostic to the LLM access mode -- the agent inside the trial container is configured via environment variables.
 
 ---
 
-## Phase 0 — Project Bootstrap
+## Phase 0 -- Project Bootstrap
 
 ### 0.1 Repository Structure
 
 ```
-Agentic Eval Flow/
+agentic_eval_flow/
 ├── Docs/                           # ADR, plans, design docs
 ├── pipeline/                       # Tekton pipeline definitions
 │   ├── pipeline.yaml               # Main Pipeline resource
@@ -95,7 +95,7 @@ Agentic Eval Flow/
 ### 0.2 Python Project Setup
 
 - Initialize `pyproject.toml` with dependencies: `pydantic`, `jinja2`, `pyyaml`, `matplotlib`, `scipy`, `kubernetes` (Python client), `tenacity`.
-- Existing `.venv` (Python 3.13) is compatible — no need to recreate. Pipeline base image uses `ubi9/python-311` (3.11+); local dev uses the existing venv.
+- Existing `.venv` (Python 3.13) is compatible -- no need to recreate. Pipeline base image uses `ubi9/python-311` (3.11+); local dev uses the existing venv.
 - Use `uv` for dependency management (consistent with Harbor fork and agentic-collections).
 
 ### 0.3 Pre-Requisites Checklist
@@ -122,11 +122,11 @@ Agentic Eval Flow/
 
 ---
 
-## Phase 1 — Submission & Validation (Steps 1-2)
+## Phase 1 -- Submission & Validation (Steps 1-2)
 
 ### 1.0 Submission Contract
 
-Canonical filename is **`instruction.md`** (not `instructions.md` — the ADR body uses the singular form; this is normative).
+Canonical filename is **`instruction.md`** (not `instructions.md` -- the ADR body uses the singular form; this is normative).
 
 A skill submission directory must follow this structure:
 
@@ -147,7 +147,7 @@ my-skill-name/
 **Goal:** Define and enforce the skill submission metadata.
 
 - [ ] Create a **Pydantic model** for `metadata.yaml` schema validation.
-  - Fields: `schema_version` (for forward compatibility), `name`, `description`, `persona`, `version`, `author`, `tags` (optional), `generation_mode` (`manual` | `ai` — source of truth for dual path).
+  - Fields: `schema_version` (for forward compatibility), `name`, `description`, `persona`, `version`, `author`, `tags` (optional), `generation_mode` (`manual` | `ai` -- source of truth for dual path).
 - [ ] Document the submission contract in a dedicated reference doc.
 
 ### 1.2 Validation Script (`scripts/validate.py`)
@@ -189,15 +189,15 @@ Exit codes: `0` = pass, `1` = validation failure (with structured JSON error out
 
 ---
 
-## Phase 2 — Scaffolding (Step 3)
+## Phase 2 -- Scaffolding (Step 3)
 
 ### 2.1 Jinja2 Templates
 
 **Goal:** Create templates that generate the correct Dockerfiles and supporting files.
 
-- [x] `Dockerfile.j2` — Unified template using `copy_pairs` loop; COPYs strategy-determined directories plus common files (`tests/`, `supportive/`, `instruction.md`).
-- [ ] `test.sh.j2` — Entry script that runs the agent, then executes `test_outputs.py` and optional `llm_judge.py`.
-- [ ] `task.toml.j2` — Harbor task configuration.
+- [x] `Dockerfile.j2` -- Unified template using `copy_pairs` loop; COPYs strategy-determined directories plus common files (`tests/`, `supportive/`, `instruction.md`).
+- [ ] `test.sh.j2` -- Entry script that runs the agent, then executes `test_outputs.py` and optional `llm_judge.py`.
+- [ ] `task.toml.j2` -- Harbor task configuration.
 
 ### 2.2 Scaffold Script (`scripts/scaffold.py`)
 
@@ -205,8 +205,8 @@ Exit codes: `0` = pass, `1` = validation failure (with structured JSON error out
 
 - Input: path to validated submission directory.
 - Output (ephemeral workspace artifacts, not permanent repo dirs):
-  - `tasks-treatment/<skill-name>/` — treatment variant with rendered Dockerfile, test.sh, task.toml.
-  - `tasks-control/<skill-name>/` — control variant (baseline).
+  - `tasks-treatment/<skill-name>/` -- treatment variant with rendered Dockerfile, test.sh, task.toml.
+  - `tasks-control/<skill-name>/` -- control variant (baseline).
 - Renders templates with context from `metadata.yaml`, directory inspection, and experiment strategy (which determines copy specs per variant).
 
 ### 2.3 Scaffold Tekton Task (`pipeline/tasks/scaffold.yaml`)
@@ -223,13 +223,13 @@ Exit codes: `0` = pass, `1` = validation failure (with structured JSON error out
 
 ---
 
-## Phase 3 — Build & Push Images (Steps 4-5)
+## Phase 3 -- Build & Push Images (Steps 4-5)
 
 ### 3.1 Build Task (`pipeline/tasks/build-push.yaml`)
 
 **Goal:** Build both treatment and control images and push to registry.
 
-- **Build tool constraint:** ADR Decision #5 specifies `docker buildx`. However, OpenShift clusters run CRI-O (not Docker) and do not provide a Docker daemon in pods. Using `docker buildx` inside unprivileged Tekton steps requires a Docker-in-Docker sidecar or socket mount, both of which require privileged access and contradict the security posture. **Buildah** (`buildah bud` + `buildah push`) is the standard rootless, daemonless alternative on OpenShift and runs in `ubi9` base images without privilege escalation. This constraint must be reconciled with ADR Decision #5 before implementation — likely by adopting Buildah for OpenShift.
+- **Build tool constraint:** ADR Decision #5 specifies `docker buildx`. However, OpenShift clusters run CRI-O (not Docker) and do not provide a Docker daemon in pods. Using `docker buildx` inside unprivileged Tekton steps requires a Docker-in-Docker sidecar or socket mount, both of which require privileged access and contradict the security posture. **Buildah** (`buildah bud` + `buildah push`) is the standard rootless, daemonless alternative on OpenShift and runs in `ubi9` base images without privilege escalation. This constraint must be reconciled with ADR Decision #5 before implementation -- likely by adopting Buildah for OpenShift.
 - Builds from the scaffolded directories.
 - Tags: `<registry>/<namespace>/<skill-name>:treatment-<commit-sha>` and `<registry>/<namespace>/<skill-name>:control-<commit-sha>`.
 - Push to **internal OpenShift registry** for evaluation (per ADR decision #6).
@@ -246,8 +246,8 @@ Exit codes: `0` = pass, `1` = validation failure (with structured JSON error out
 
 The `build-push` Tekton task must emit two **results** for downstream consumption:
 
-- `treatment-image-ref` — full digest-based reference (e.g., `registry/ns/skill@sha256:...`)
-- `control-image-ref` — same format
+- `treatment-image-ref` -- full digest-based reference (e.g., `registry/ns/skill@sha256:...`)
+- `control-image-ref` -- same format
 
 The `pipeline.yaml` wires these to the `harbor-eval` task:
 
@@ -269,7 +269,7 @@ Use digest-based references (not mutable tags) between tasks to avoid tag mutati
 
 ---
 
-## Phase 4 — Harbor OpenShift Backend (Step 6)
+## Phase 4 -- Harbor OpenShift Backend (Step 6)
 
 ### 4.1 OpenShift Environment Backend (in Harbor fork)
 
@@ -280,12 +280,12 @@ The GKE backend (`src/harbor/environments/gke.py`, ~1044 lines) serves as the re
 | Method | GKE Implementation | OpenShift Replacement |
 |---|---|---|
 | `_init_client` | `gcloud container clusters get-credentials` + `load_kube_config()` | `load_incluster_config()` (in-cluster SA token) or `load_kube_config()` (local dev) |
-| `_build_and_push_image` | `gcloud builds submit` (Cloud Build) | **No-op — see contract below** |
+| `_build_and_push_image` | `gcloud builds submit` (Cloud Build) | **No-op -- see contract below** |
 | `_image_exists` | `gcloud artifacts docker images describe` | Query OpenShift internal registry API or Quay API via `skopeo inspect` or registry HTTP API |
 | `start` | Creates Pod spec, waits for ready | Same pattern, using `load_incluster_config()` instead of gcloud auth |
 | `stop` | Deletes Pod, waits for termination | Same pattern |
-| `exec` | `kubectl exec` via K8s stream API | Same — the `kubernetes` Python client is identical |
-| `upload_file` / `upload_dir` | tar + K8s stream stdin | Same — portable across K8s distributions |
+| `exec` | `kubectl exec` via K8s stream API | Same -- the `kubernetes` Python client is identical |
+| `upload_file` / `upload_dir` | tar + K8s stream stdin | Same -- portable across K8s distributions |
 | `download_file` / `download_dir` | tar + K8s stream stdout | Same |
 
 **`_build_and_push_image` contract:** In this pipeline, image build/push is owned by Tekton Steps 4-5. The Harbor OpenShift backend only orchestrates trial Pod lifecycle using pre-built images.
@@ -320,7 +320,7 @@ Additional requirements:
 - [x] `harbor-eval` Tekton task accepts `treatment-image-ref` and `control-image-ref` as params wired from Phase 3 results.
 - [x] N = configurable attempts per variant (default 20, treatment + control = 40 total sessions) via `n-trials` from `metadata.yaml`.
 - [x] Resource requests/limits per trial Pod (from `metadata.yaml`: `cpus`, `memory_mb`, `storage_mb`).
-- [ ] LLM endpoint configured via environment variable — backend is agnostic to whether it points to LiteLLM, a direct API, or a self-hosted model.
+- [ ] LLM endpoint configured via environment variable -- backend is agnostic to whether it points to LiteLLM, a direct API, or a self-hosted model.
 - [x] Trial Pod timeout: configurable via timeout multipliers derived from `metadata.yaml`.
 - [x] Eval config generation script (`scripts/generate_eval_config.py`) reads metadata and produces Harbor job config YAML.
 - [x] Supports two modes: `prebuilt` (digest image refs) and `local-build` (Harbor builds from Dockerfiles).
@@ -336,21 +336,21 @@ The pipeline ServiceAccount needs (prefer named Secrets for least-privilege wher
 | Pods, Pods/exec, Pods/log | create, get, list, watch, delete | Trial Pod lifecycle | Done |
 | Secrets | get | LLM credentials injection via `envFrom` | Done |
 | Events | get, list | Diagnosing hung/failed trial Pods | Done |
-| ConfigMaps | get, list | Trial configuration | Deferred — not used by current backend |
-| PVCs | get, list, create | Pipeline workspaces and artifacts | Deferred — handled by Tekton |
-| ImageStreams (OpenShift) | get, list | Registry access | Deferred — not used by current backend |
+| ConfigMaps | get, list | Trial configuration | Deferred -- not used by current backend |
+| PVCs | get, list, create | Pipeline workspaces and artifacts | Deferred -- handled by Tekton |
+| ImageStreams (OpenShift) | get, list | Registry access | Deferred -- not used by current backend |
 
 ### 4.6 Definition of Done
 
 - [ ] Trial Pods complete (N per variant × 2 variants, default 40 total).
-- [ ] Cleanup verified — no stale Pods after evaluation.
+- [ ] Cleanup verified -- no stale Pods after evaluation.
 - [ ] Retry behavior validated for transient failures.
 - [ ] Unit tests pass with mocked K8s API.
 - [ ] Integration test passes on OpenShift sandbox.
 
 ---
 
-## Phase 5 — Analysis & Reporting (Step 7)
+## Phase 5 -- Analysis & Reporting (Step 7)
 
 ### 5.1 Analysis Script (`scripts/analyze.py`)
 
@@ -369,7 +369,7 @@ Output: Markdown (or HTML) report with:
 - Links to detailed trial logs.
 - Pass/fail recommendation based on configurable threshold.
 - LLM judge summary (if applicable).
-- Estimated vs. actual token spend (when available from LLM provider — not all modes expose usage).
+- Estimated vs. actual token spend (when available from LLM provider -- not all modes expose usage).
 - **Run provenance block:** commit SHA(s), Harbor fork SHA, image digest(s), model identifier/version, pipeline run ID, timestamp.
 
 ### 5.2 Analyze Tekton Task (`pipeline/tasks/analyze-report.yaml`)
@@ -381,13 +381,13 @@ Output: Markdown (or HTML) report with:
 ### 5.3 Definition of Done
 
 - [x] Report includes uplift + p-value + run provenance (artifact links deferred to Phase 6 publish step).
-- [ ] Heatmaps generated and embedded (deferred — not applicable to single A/B comparison).
-- [ ] LLM judge scores aggregated when present (deferred — `llm_judge.py` not yet implemented).
+- [ ] Heatmaps generated and embedded (deferred -- not applicable to single A/B comparison).
+- [ ] LLM judge scores aggregated when present (deferred -- `llm_judge.py` not yet implemented).
 - [x] Unit tests pass for `analyze.py`.
 
 ---
 
-## Phase 6 — Publish & Store (Step 8)
+## Phase 6 -- Publish & Store (Step 8)
 
 ### 6.1 Publish Script (`scripts/publish.py`)
 
@@ -397,7 +397,7 @@ Actions:
 - Upload final report to artifact storage (PVC/S3).
 - Redact PII/secrets from published logs and reports.
 - If evaluation passed thresholds:
-  - Re-tag and push images to **Quay.io** with TTL metadata (single promotion point — not in Phase 3).
+  - Re-tag and push images to **Quay.io** with TTL metadata (single promotion point -- not in Phase 3).
   - **Commit to agentic-collections repo** (ADR Decision #4): open a PR to `agentic-collections` with the submission files (`instruction.md`, `tests/`, `metadata.yaml`, `skills/`). Target directory derived from `persona` field + normalized skill slug + version. PR includes a standardized title and body with evaluation summary and report link. Requires deploy key/token stored as OpenShift Secret.
 - Post summary as a commit status or PR comment on the submissions repo.
 - Clean up ephemeral resources (temporary PVCs, intermediate images).
@@ -416,7 +416,7 @@ Actions:
 
 ---
 
-## Phase 7 — AI-Assisted Skill Evaluation (Decision #2 & #3)
+## Phase 7 -- AI-Assisted Skill Evaluation (Decision #2 & #3)
 
 > This phase is **optional for MVP**. Use feature flags `ENABLE_AI_TEST_GENERATION` and `ENABLE_AI_QUALITY_REVIEW` to toggle.
 
@@ -441,7 +441,7 @@ Pipeline task order when AI features are enabled:
 - [x] Create `scripts/test_quality_review.py` that uses the LLM to assess coherence, coverage, clarity, feasibility, and robustness.
 - [x] Add as a pipeline task (`test-quality-review`) between validation and scaffolding.
 - [x] Support both Harbor (`instruction.md` + `test_outputs.py`) and ASE (`evals.json`) formats.
-- [x] Review is **advisory** (non-blocking) — always exits 0 regardless of recommendation.
+- [x] Review is **advisory** (non-blocking) -- always exits 0 regardless of recommendation.
 
 ### 7.3 ASE (Agent Skills Eval) Integration
 
@@ -456,7 +456,7 @@ Agentic Eval Flow supports two evaluation engines:
 
 ASE integration includes:
 - [x] `eval-engine` pipeline parameter (`harbor` / `ase` / `both`)
-- [x] `scripts/generate_ase_evals.py` — generates `evals.json` from `SKILL.md` if not provided
+- [x] `scripts/generate_ase_evals.py` -- generates `evals.json` from `SKILL.md` if not provided
 - [x] Semantic review of generated `evals.json` (skill specificity, prompt quality, assertion alignment)
 - [x] Upload generated files to MinIO under `generated/` folder
 - [x] ASE results aggregated into unified `report.json` format
@@ -469,7 +469,7 @@ Optional security scan step using Cisco AI Defense `skill-scanner` to detect:
 - Malicious code patterns
 
 Implementation:
-- [x] `pipeline/tasks/security-scan.yaml` — Tekton task with configurable modes
+- [x] `pipeline/tasks/security-scan.yaml` -- Tekton task with configurable modes
 - [x] Three modes: `disabled` (skip), `warn` (report only), `block` (fail on HIGH/CRITICAL)
 - [x] Submission-level control via `metadata.yaml` (`security_scan: warn|block|disabled`)
 - [x] LLM semantic analysis using pipeline's configured model
@@ -502,9 +502,9 @@ Database schema (`security_scans` table):
 
 ---
 
-## Phase 8 — Infrastructure & Operations
+## Phase 8 -- Infrastructure & Operations
 
-### 8.1 LiteLLM Deployment (Optional — Vertex AI mode only)
+### 8.1 LiteLLM Deployment (Optional -- Vertex AI mode only)
 
 > **Ordering note:** If `LLM_MODE=vertex`, Phase 8.1 must complete before Phase 4 (Harbor evaluation) can run trials. For other modes, this phase is skipped entirely.
 
@@ -540,17 +540,17 @@ Database schema (`security_scans` table):
   - Expired evaluation reports.
   - OpenShift internal registry images (after Quay promotion or on failure).
 
-### 8.4 LLM Model Strategy (Decision #8 — Updated)
+### 8.4 LLM Model Strategy (Decision #8 -- Updated)
 
 Three supported modes, configured per pipeline run:
 
 | Mode | Configuration | Infrastructure |
 |---|---|---|
-| Direct API key | Set `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` in trial Pod env | None — agent calls provider directly |
+| Direct API key | Set `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` in trial Pod env | None -- agent calls provider directly |
 | opencode + self-hosted | Set model endpoint in trial Pod env, use opencode as agent wrapper | Self-hosted model (vLLM, Ollama, etc.) |
 | Vertex AI + LiteLLM | Set `LITELLM_BASE_URL` in trial Pod env | LiteLLM Deployment + Vertex AI credentials |
 
-The pipeline and Harbor backend are agnostic — they pass LLM config as environment variables to trial Pods.
+The pipeline and Harbor backend are agnostic -- they pass LLM config as environment variables to trial Pods.
 
 ### 8.5 Cost Controls & Observability
 
@@ -558,7 +558,7 @@ A single evaluation run consumes N × 2 LLM sessions (default N=20, 40 total). C
 
 - [ ] Configure LiteLLM per-key budget limits (when using Vertex mode).
 - [ ] Implement pre-flight cost estimate: before launching Harbor, estimate token usage based on skill complexity and configured N. Log the estimate to the run summary to flag potential runaway cost before spend happens.
-- [ ] Implement per-run token usage tracking — surface estimated vs. actual spend in the evaluation report.
+- [ ] Implement per-run token usage tracking -- surface estimated vs. actual spend in the evaluation report.
 - [ ] Set up concurrency limits: max parallel `PipelineRun`s and max parallel trial Pods per namespace.
 - [ ] Track metrics: pass/fail rate by skill and model, mean/95p trial duration, failure categories (validation, build, runtime, LLM, infra).
 - [ ] Alert thresholds for cost spikes and error-rate spikes.
@@ -569,27 +569,27 @@ A single evaluation run consumes N × 2 LLM sessions (default N=20, 40 total). C
 - [ ] Partial-run recovery: Tekton does not natively support "resume from task T." Options: (a) manual re-run with workspace snapshot from PVC, (b) split into smaller chained Pipelines, or (c) application-level checkpointing in Harbor (persist partial results per trial). Document chosen mechanism before implementation.
 - [ ] Timeouts: per-trial Pod timeout and global evaluation timeout.
 - [ ] Dead-letter path: failed runs retain artifacts for debugging.
-- [ ] Persist partial results to PVC after each trial — prevents full re-run on LiteLLM HA failure.
+- [ ] Persist partial results to PVC after each trial -- prevents full re-run on LiteLLM HA failure.
 
 ---
 
-## Phase 9 — Continuous Performance Monitoring
+## Phase 9 -- Continuous Performance Monitoring
 
 ### 9.1 Platform Update Regression Testing
 
 - [ ] Define a dedicated test set for mission-critical Insights API calls and tool-mapping expectations.
 - [ ] Create a separate Tekton pipeline/trigger for upstream platform/vendor update events (e.g., Gemini/Insights stack).
 - [ ] Reuse the evaluation infrastructure (containerized runs) for regression tests.
-- [ ] **MCP LightSpeed regression pack** (ADR footnote [e]): Identify the source location of MCP LightSpeed tests (specific repo/path — to be inventoried during this phase). Bundle as committed fixtures in `Agentic Eval Flow/tests/canary/` or reference via config-driven pointer. The monitoring pipeline task should accept a `canary-test-set` param that defaults to the MCP LightSpeed pack but can be overridden.
+- [ ] **MCP LightSpeed regression pack** (ADR footnote [e]): Identify the source location of MCP LightSpeed tests (specific repo/path -- to be inventoried during this phase). Bundle as committed fixtures in `agentic_eval_flow/tests/canary/` or reference via config-driven pointer. The monitoring pipeline task should accept a `canary-test-set` param that defaults to the MCP LightSpeed pack but can be overridden.
 
 ### 9.2 Degradation Detection
 
-**9.2a — Simple thresholds (MVP):**
+**9.2a -- Simple thresholds (MVP):**
 - [ ] Store historical pass rates per skill in PVC/S3.
 - [ ] Configure hard-coded alerting thresholds for performance drops (e.g., >10% pass-rate decline).
 - [ ] Wire alerts into the notification channel from Phase 6 (Slack/GitHub status).
 
-**9.2b — CUSUM (post-MVP hardening):**
+**9.2b -- CUSUM (post-MVP hardening):**
 - [ ] Implement CUSUM in `scripts/monitor.py` using configurable drift threshold (starting defaults: `k=0.5`, `h=5`).
 - [ ] Input: historical pass-rate time series per skill.
 - [ ] Output: boolean alert flag + CUSUM statistic at time of detection.
@@ -601,20 +601,20 @@ A single evaluation run consumes N × 2 LLM sessions (default N=20, 40 total). C
 
 | Priority | Phase | Estimated Effort | Dependencies |
 |---|---|---|---|
-| 1 | Phase 0 — Bootstrap | 1-2 days | None |
-| 2 | Phase 8.2 — RBAC & Security | 1-2 days | OpenShift cluster (parallel with Phases 1-3) |
-| 3 | Phase 1 — Validation | 2-3 days | Phase 0 |
-| 4 | Phase 2 — Scaffolding | 2-3 days | Phase 1 |
-| 5 | Phase 3 — Build & Push | 2-3 days | Phase 2, Registry access |
-| 6 | Phase 8.1 — LiteLLM (if Vertex mode) | 1-2 days | Vertex AI credentials (must complete before Phase 4 trials if Vertex mode) |
-| 7 | Phase 4 — Harbor Backend | 3-5 days | Harbor fork, Phase 3 |
-| 8 | Phase 5 — Analysis | 2-3 days | Phase 4 |
-| 9 | Phase 6 — Publish | 1-2 days | Phase 5, agentic-collections deploy key |
-| 10 | Phase 7 — AI Assist (optional) | 3-4 days | LLM access configured |
-| 11 | Phase 8.3-8.6 — Ops & Cost | 2-3 days | Phases 5-6 |
-| 12 | Phase 9 — Monitoring | 2-3 days | Phases 5-6 |
+| 1 | Phase 0 -- Bootstrap | 1-2 days | None |
+| 2 | Phase 8.2 -- RBAC & Security | 1-2 days | OpenShift cluster (parallel with Phases 1-3) |
+| 3 | Phase 1 -- Validation | 2-3 days | Phase 0 |
+| 4 | Phase 2 -- Scaffolding | 2-3 days | Phase 1 |
+| 5 | Phase 3 -- Build & Push | 2-3 days | Phase 2, Registry access |
+| 6 | Phase 8.1 -- LiteLLM (if Vertex mode) | 1-2 days | Vertex AI credentials (must complete before Phase 4 trials if Vertex mode) |
+| 7 | Phase 4 -- Harbor Backend | 3-5 days | Harbor fork, Phase 3 |
+| 8 | Phase 5 -- Analysis | 2-3 days | Phase 4 |
+| 9 | Phase 6 -- Publish | 1-2 days | Phase 5, agentic-collections deploy key |
+| 10 | Phase 7 -- AI Assist (optional) | 3-4 days | LLM access configured |
+| 11 | Phase 8.3-8.6 -- Ops & Cost | 2-3 days | Phases 5-6 |
+| 12 | Phase 9 -- Monitoring | 2-3 days | Phases 5-6 |
 
-**Total estimated effort: ~22-33 days** (parallelizable — RBAC/Security work runs alongside Phases 1-3; LiteLLM setup slots in before Harbor eval if using Vertex mode).
+**Total estimated effort: ~22-33 days** (parallelizable -- RBAC/Security work runs alongside Phases 1-3; LiteLLM setup slots in before Harbor eval if using Vertex mode).
 
 ---
 
@@ -642,13 +642,13 @@ A single evaluation run consumes N × 2 LLM sessions (default N=20, 40 total). C
 Consolidated evaluation results from all engines, security gates, and quality gates into a single `scorecard.json` with configurable policy.
 
 **Components:**
-- `abevalflow/gates/base.py` — `GateResult` schema with normalized scores
-- `abevalflow/scorecard.py` — `Scorecard` model and combination logic
-- `abevalflow/engines/` — Registry + adapters for Harbor, ASE, A2A, MCPChecker
-- `abevalflow/gates/security/` — Registry + CiscoGate adapter
-- `abevalflow/gates/quality/` — Registry + LLMReviewGate adapter
-- `scripts/aggregate_scorecard.py` — Aggregation script
-- `pipeline/tasks/post/analyze-and-check-degradation.yaml` — `aggregate-scorecard` step
+- `abevalflow/gates/base.py` -- `GateResult` schema with normalized scores
+- `abevalflow/scorecard.py` -- `Scorecard` model and combination logic
+- `abevalflow/engines/` -- Registry + adapters for Harbor, ASE, A2A, MCPChecker
+- `abevalflow/gates/security/` -- Registry + CiscoGate adapter
+- `abevalflow/gates/quality/` -- Registry + LLMReviewGate adapter
+- `scripts/aggregate_scorecard.py` -- Aggregation script
+- `pipeline/tasks/post/analyze-and-check-degradation.yaml` -- `aggregate-scorecard` step
 
 **Configuration:** `gate_policy` in `metadata.yaml`:
 ```yaml

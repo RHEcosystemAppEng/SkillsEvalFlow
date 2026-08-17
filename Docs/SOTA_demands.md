@@ -92,9 +92,9 @@ This combination is ahead of most approaches that only lint or unit-test skill f
 | **Test phase** | Skipped in monitoring pipeline (no security re-scan on canary runs) |
 | **Degradation logic** | Last-run vs previous-run ratio (`monitor.py`, default 0.85) |
 | **Statistics** | No CUSUM, rolling baseline, or seasonality (noted as post-MVP in APPENG-4911) |
-| **Schedule** | Cron every 10 days — coarse |
+| **Schedule** | Cron every 10 days -- coarse |
 | **Triggers** | No webhook on model upgrade, prompt change, or agent deploy |
-| **Canary config** | ConfigMap — not a versioned baseline registry or dedicated canary repo |
+| **Canary config** | ConfigMap -- not a versioned baseline registry or dedicated canary repo |
 | **CI linkage** | CI has `enable-degradation-check: false`; monitoring and CI use disconnected policies |
 
 **SOTA expectation:** Event-driven canaries (model/prompt/infra change) + statistical process control + fleet dashboards + auto-ticket on regression.
@@ -105,16 +105,16 @@ This combination is ahead of most approaches that only lint or unit-test skill f
 
 | Gap | Detail |
 |-----|--------|
-| **Static security only** | Cisco scan on skill content — no dynamic red-team or adversarial eval during agent runs |
+| **Static security only** | Cisco scan on skill content -- no dynamic red-team or adversarial eval during agent runs |
 | **No skills quality linter in CI** | skillsaw-style structural lint not integrated |
 | **Snyk / dependency scan** | Designed (APPENG-5305) but not wired like Cisco in the current test phase |
 | **Single model per run** | No matrix (model × agent × engine) |
 | **Flake handling** | No pass@k reporting, retry-aware stats, or infra-error exclusion in marketplace gate |
 | **Multi-task benchmarks** | One submission ≈ one task; no curated benchmark suite execution |
 | **MCPChecker bypasses test phase** | MCP submissions skip security and quality gates |
-| **A2A pass criteria** | Heuristic threshold — not comparable to Harbor A/B semantics |
+| **A2A pass criteria** | Heuristic threshold -- not comparable to Harbor A/B semantics |
 
-**SOTA expectation:** Layered eval — lint → static security → functional eval → adversarial probe → monitoring canary.
+**SOTA expectation:** Layered eval -- lint → static security → functional eval → adversarial probe → monitoring canary.
 
 ---
 
@@ -145,28 +145,28 @@ The pipeline narrative includes GEPA, SkillOps, and skillberry-style authoring, 
 
 ## Recommended Roadmap
 
-### P0 — Marketplace Trust (3–6 weeks)
+### P0 -- Marketplace Trust (3–6 weeks)
 
-1. **Enforced gate matrix** — Skip `evaluate` when `tests-passed=false`. Add `marketplace-mode` with stricter thresholds (uplift + p-value + security block).
-2. **GitHub commit status / required check** — Not only PR comments.
-3. ✅ **Unified scorecard schema** — `scorecard.json` with `gates[]` breakdown combining engine, security, and quality gates. Configurable via `gate_policy` in `metadata.yaml`. *(Implemented 2026-06-16)*
-4. ✅ **Quality review blocking mode** — Gates support `disabled`, `warn`, or `block` modes. *(Implemented 2026-06-16)*
+1. **Enforced gate matrix** -- Skip `evaluate` when `tests-passed=false`. Add `marketplace-mode` with stricter thresholds (uplift + p-value + security block).
+2. **GitHub commit status / required check** -- Not only PR comments.
+3. ✅ **Unified scorecard schema** -- `scorecard.json` with `gates[]` breakdown combining engine, security, and quality gates. Configurable via `gate_policy` in `metadata.yaml`. *(Implemented 2026-06-16)*
+4. ✅ **Quality review blocking mode** -- Gates support `disabled`, `warn`, or `block` modes. *(Implemented 2026-06-16)*
 
-### P1 — Observability and Monitoring (6–10 weeks)
+### P1 -- Observability and Monitoring (6–10 weeks)
 
 5. **Grafana dashboards** on PostgreSQL (pass rate, uplift, p-value, degradation, cost).
 6. **Token and time tracking** per run and per trial.
-7. **Monitoring v2** — Rolling baseline, CUSUM, triggers on model/prompt/agent change, Jira or Slack ticket on regression.
-8. **MLflow or Langfuse observer** — Implement at least one observer behind `ResultsObserver`.
+7. **Monitoring v2** -- Rolling baseline, CUSUM, triggers on model/prompt/agent change, Jira or Slack ticket on regression.
+8. **MLflow or Langfuse observer** -- Implement at least one observer behind `ResultsObserver`.
 
-### P2 — SOTA Eval Depth (ongoing)
+### P2 -- SOTA Eval Depth (ongoing)
 
-9. **ODH `eval.yaml` engine adapter** — Shared contract without replacing the Tekton shell.
-10. **Benchmark registry** — Versioned datasets (skills, MCP tasks, agent scenarios), not only ad hoc submissions.
+9. **ODH `eval.yaml` engine adapter** -- Shared contract without replacing the Tekton shell.
+10. **Benchmark registry** -- Versioned datasets (skills, MCP tasks, agent scenarios), not only ad hoc submissions.
 11. **skillsaw + Snyk** in test phase alongside Cisco.
-12. **Adversarial eval pack** — Runtime prompt-injection probes, not only static scan.
-13. **Multi-model matrix** — Optional PipelineRun matrix parameter.
-14. **skillberry / GEPA hook** — Optional post-fail optimization pipeline branch.
+12. **Adversarial eval pack** -- Runtime prompt-injection probes, not only static scan.
+13. **Multi-model matrix** -- Optional PipelineRun matrix parameter.
+14. **skillberry / GEPA hook** -- Optional post-fail optimization pipeline branch.
 
 ---
 
@@ -188,10 +188,10 @@ The pipeline narrative includes GEPA, SkillOps, and skillberry-style authoring, 
 
 ## Related Documentation
 
-- [implementation_plan.md](implementation_plan.md) — Phased pipeline build-out
-- [results_persistence_and_observability_plan.md](results_persistence_and_observability_plan.md) — DB, observers, Grafana follow-ups
-- [trigger_models_and_experiment_types.md](trigger_models_and_experiment_types.md) — PR vs submissions-repo models
-- [failure_handling.md](failure_handling.md) — Pipeline failure behavior
+- [implementation_plan.md](implementation_plan.md) -- Phased pipeline build-out
+- [results_persistence_and_observability_plan.md](results_persistence_and_observability_plan.md) -- DB, observers, Grafana follow-ups
+- [trigger_models_and_experiment_types.md](trigger_models_and_experiment_types.md) -- PR vs submissions-repo models
+- [failure_handling.md](failure_handling.md) -- Pipeline failure behavior
 
 ---
 

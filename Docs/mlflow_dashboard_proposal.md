@@ -1,6 +1,6 @@
-# MLflow Dashboard Proposal — Agentic Eval Flow Observability
+# MLflow Dashboard Proposal -- Agentic Eval Flow Observability
 
-Phase C+D of APPENG-5370. Using MLflow's built-in dashboard and experiment tracking to visualize pipeline results, gate scores, certification levels, and LLM token usage — all in one place.
+Phase C+D of APPENG-5370. Using MLflow's built-in dashboard and experiment tracking to visualize pipeline results, gate scores, certification levels, and LLM token usage -- all in one place.
 
 Each pipeline run becomes an MLflow run under an experiment (one experiment per submission). Metrics are logged from our existing PostgreSQL tables.
 
@@ -72,10 +72,10 @@ Each submission (e.g. `hello-world`, `my-skill`) is an MLflow experiment. Every 
 - See how uplift, pass rate, and gate scores changed between runs
 
 ### Metric charts (built-in)
-- `treatment_pass_rate` over runs — is the skill improving?
-- `gate_score_security` over runs — are security scores trending up?
-- `total_tokens` over runs — is token usage growing?
-- `uplift` over runs — is the skill's impact stable?
+- `treatment_pass_rate` over runs -- is the skill improving?
+- `gate_score_security` over runs -- are security scores trending up?
+- `total_tokens` over runs -- is token usage growing?
+- `uplift` over runs -- is the skill's impact stable?
 
 ### Experiment overview
 - Table of all runs with sortable columns (pass rate, uplift, certification, tokens)

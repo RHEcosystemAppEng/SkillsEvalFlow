@@ -118,9 +118,9 @@ certification_policy:
 
 ### Priority Order
 
-1. **Submission's `metadata.yaml`** — if `certification_policy` is present, use it
-2. **Pipeline's `--certification-profile`** — if set, load profile from config
-3. **Hardcoded defaults** — fallback to `FOUNDATIONAL_CHECKS`, `TRUSTED_CHECKS`, `CERTIFIED_CHECKS` in Python
+1. **Submission's `metadata.yaml`** -- if `certification_policy` is present, use it
+2. **Pipeline's `--certification-profile`** -- if set, load profile from config
+3. **Hardcoded defaults** -- fallback to `FOUNDATIONAL_CHECKS`, `TRUSTED_CHECKS`, `CERTIFIED_CHECKS` in Python
 
 ### Code Location
 
@@ -688,9 +688,9 @@ profiles:
 | Change fact payload structure | `compass_facts.py` |
 
 **No changes needed in:**
-- `compass_facts.py` — automatically picks up new checks
-- `scorecard.py` — automatically includes new checks  
-- Pipeline YAML — just select the profile
+- `compass_facts.py` -- automatically picks up new checks
+- `scorecard.py` -- automatically includes new checks  
+- Pipeline YAML -- just select the profile
 
 ---
 

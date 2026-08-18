@@ -112,10 +112,7 @@ class A2AAgent(BaseAgent):
         self.verify_ssl = verify_ssl
         self._extra_env = extra_env or {}
         self._auth_token = (
-            auth_token
-            or self._extra_env.get("AGENT_AUTH_TOKEN")
-            or os.environ.get("AGENT_AUTH_TOKEN")
-            or ""
+            auth_token or self._extra_env.get("AGENT_AUTH_TOKEN") or os.environ.get("AGENT_AUTH_TOKEN") or ""
         )
 
     @staticmethod

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Automated Tekton pipeline on OpenShift for A/B evaluation of AI submissions"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.0",
     "jinja2>=3.1",
@@ -43,7 +43,7 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 120
 
 [tool.ruff.lint]

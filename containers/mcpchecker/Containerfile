@@ -18,7 +18,7 @@ RUN git clone --depth 1 https://github.com/mcpchecker/mcpchecker.git .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /mcpchecker ./cmd/mcpchecker
 
 # Stage 2: Runtime image with Python and mcpchecker
-FROM registry.access.redhat.com/ubi9/python-311:9.6
+FROM registry.access.redhat.com/ubi9/python-311:9.8-1779945715
 
 USER root
 

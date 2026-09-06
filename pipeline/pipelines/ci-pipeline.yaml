@@ -188,7 +188,7 @@ spec:
 
     - name: aeh-openshell-image
       type: string
-      default: "quay.io/aipcc/base-images/agentic/openclaw:latest"
+      default: "registry.access.redhat.com/ubi9/python-311:9.6"
       description: Orchestrator image with harness + openshell CLI
     - name: agent-eval-harness-repo-url
       type: string

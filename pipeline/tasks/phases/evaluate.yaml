@@ -182,10 +182,9 @@ spec:
     # OpenShell / forge-saw (eval-engine=aeh_openshell_openclaw)
     - name: aeh-openshell-image
       type: string
-      default: "quay.io/aipcc/base-images/agentic/openclaw:latest"
+      default: "registry.access.redhat.com/ubi9/python-311:9.6"
       description: >-
-        Orchestrator image with GuyZivRH agent_eval.openshell plus the openshell
-        CLI.
+        Orchestrator image with harness + openshell CLI.
     - name: agent-eval-harness-repo-url
       type: string
       default: "https://github.com/GuyZivRH/agent-eval-harness.git"
@@ -1673,11 +1672,18 @@ spec:
           pip install --quiet --no-cache-dir pyyaml pydantic jinja2 openai 2>/dev/null || true
         fi
 
+        # Ensure openshell CLI is available
+        if ! command -v openshell >/dev/null 2>&1; then
+          echo "Installing openshell CLI v$(params.openshell-cli-version)..."
+          mkdir -p /tmp/bin
+          OS_ARCH="x86_64-unknown-linux-musl"
+          curl -fsSL "https://github.com/NVIDIA/OpenShell/releases/download/v$(params.openshell-cli-version)/openshell-${OS_ARCH}.tar.gz" | tar -xz -C /tmp/bin openshell
+          export PATH="/tmp/bin:$PATH"
+        fi
+
         if ! python3 -c "import agent_eval.openshell.run"; then
           echo "ERROR: image $(params.aeh-openshell-image) cannot import agent_eval.openshell."
           echo "PYTHONPATH: $PYTHONPATH"
-          echo "Pip list:"
-          python3 -m pip list 2>/dev/null || echo "pip not available"
           exit 1
         fi
 

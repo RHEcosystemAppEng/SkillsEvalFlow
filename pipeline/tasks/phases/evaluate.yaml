@@ -202,8 +202,12 @@ spec:
         Override only if using a different gateway (e.g. forge-saw :17670).
     - name: openshell-sandbox-image
       type: string
-      default: "quay.io/aipcc/base-images/agentic/openclaw:latest"
-      description: Sandbox image the SAW gateway pulls for OpenClaw
+      default: "quay.io/aipcc/base-images/agentic/openclaw:0.0.1-1787755593"
+      description: >-
+        OpenClaw image for OpenShell Kubernetes sandboxes. Must include
+        nsenter (util-linux). RHEL 9.8 0.0.1-1787755593 works. amd64
+        :latest / 2026.8.1-beta.3 is Hummingbird without nsenter; the
+        supervisor exits and the gateway reports PodFailed.
     - name: openshell-cli-version
       type: string
       default: "0.0.111"

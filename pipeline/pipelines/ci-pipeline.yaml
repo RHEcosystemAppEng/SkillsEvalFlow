@@ -202,6 +202,9 @@ spec:
     - name: openshell-sandbox-image
       type: string
       default: "quay.io/aipcc/base-images/agentic/openclaw:latest"
+    - name: openshell-cli-version
+      type: string
+      default: "0.0.110"
     - name: openshell-provider
       type: string
       default: ""
@@ -524,6 +527,8 @@ spec:
           value: $(params.openshell-gateway-endpoint)
         - name: openshell-sandbox-image
           value: $(params.openshell-sandbox-image)
+        - name: openshell-cli-version
+          value: $(params.openshell-cli-version)
         - name: openshell-provider
           value: $(params.openshell-provider)
         - name: openshell-mtls-secret

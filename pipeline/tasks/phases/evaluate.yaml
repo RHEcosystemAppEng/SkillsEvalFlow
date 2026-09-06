@@ -202,6 +202,9 @@ spec:
       type: string
       default: "quay.io/aipcc/base-images/agentic/openclaw:latest"
       description: Sandbox image the SAW gateway pulls for OpenClaw
+    - name: openshell-cli-version
+      type: string
+      default: "0.0.110"
     - name: openshell-provider
       type: string
       default: ""
@@ -1659,6 +1662,15 @@ spec:
         HARNESS_DIR="$(workspaces.source.path)/_harness"
         PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
         export PYTHONPATH="$HARNESS_DIR:$PIPELINE_DIR:${PYTHONPATH:-}"
+
+        # Ensure openshell CLI is available
+        if ! command -v openshell >/dev/null 2>&1; then
+          echo "Installing openshell CLI v$(params.openshell-cli-version)..."
+          mkdir -p /tmp/bin
+          curl -fsSL "https://github.com/NVIDIA/OpenShell/releases/download/v$(params.openshell-cli-version)/openshell-linux-amd64.tar.gz" | tar -xz -C /tmp/bin openshell
+          export PATH="/tmp/bin:$PATH"
+        fi
+
         if ! python3 -c "import agent_eval.openshell.run" 2>/dev/null; then
           echo "ERROR: image $AEH_OS_IMAGE cannot import agent_eval.openshell."
           echo "Rebuild from GuyZivRH agent-eval-harness main and include the openshell CLI."

@@ -179,7 +179,7 @@ spec:
       description: Treatment variant eval.yaml filename for pairwise mode (relative to submission)
     - name: aeh-image
       type: string
-      default: "quay.io/ecosystem-appeng/agent-eval-harness:v1.0.0"
+      default: "quay.io/aipcc/base-images/agentic/openclaw:latest"
       description: Container image for AEH trial pods (required for harbor.run)
     - name: aeh-runner
       type: string

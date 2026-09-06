@@ -62,7 +62,7 @@ spec:
         opt in.
     - name: aeh-image
       type: string
-      default: "quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3"
+      default: "quay.io/aipcc/base-images/agentic/openclaw:latest"
       description: AEH image providing skills/eval-check/scripts/harness_inventory.py
     - name: llm-base-url
       type: string

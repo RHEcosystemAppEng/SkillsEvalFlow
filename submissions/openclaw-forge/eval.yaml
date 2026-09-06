@@ -1,7 +1,6 @@
 # Forge evaluation rubrics — Chief of Staff agent producing executive morning briefing
 # Scene-based: all messages seeded once at run start from scenes/<name>.yaml
 name: forge-eval-rubrics
-skill: openclaw-forge
 
 scene: monday-acquisition
 

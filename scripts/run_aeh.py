@@ -40,6 +40,92 @@ class RunnerError(Exception):
     """Raised when a runner encounters an error."""
 
 
+def eval_dir_name(config_path: Path, fallback: str | None = None) -> str:
+    """Directory name under AGENT_EVAL_RUNS_DIR, matching EvalConfig.eval_name().
+
+    Order: ``execution.skill`` / top-level ``skill``, then sanitized ``name``,
+    then ``fallback`` (pipeline submission-name) or the config filename stem.
+
+    Prompt-mode evals (no skill) such as openclaw-forge use ``name:
+    forge-eval-rubrics``. The Tekton wrapper must use this leaf, not the
+    submission directory name.
+    """
+    fallback_name = fallback or config_path.stem
+    try:
+        raw = yaml.safe_load(config_path.read_text()) or {}
+    except (OSError, yaml.YAMLError):
+        return fallback_name
+    if not isinstance(raw, dict):
+        return fallback_name
+
+    exec_block = raw.get("execution") if isinstance(raw.get("execution"), dict) else {}
+    skill = str(exec_block.get("skill") or "").strip() or str(raw.get("skill") or "").strip()
+    if skill:
+        return skill
+
+    name = str(raw.get("name") or "").strip()
+    if name and name not in {config_path.stem, "eval"}:
+        sanitized = name.lower().replace(" ", "-")
+        sanitized = "".join(c for c in sanitized if c.isalnum() or c in "._-")
+        if sanitized:
+            return sanitized
+
+    return fallback_name
+
+
+def resolve_aeh_run_dir(
+    reports_root: Path,
+    run_id: str,
+    *,
+    eval_name: str,
+    submission_name: str | None = None,
+) -> Path | None:
+    """Find ``reports/<leaf>/<run_id>`` that contains summary.yaml or run_result.json.
+
+    Looks at eval_name, then submission_name, then any leaf under reports_root.
+    """
+    leaves: list[str] = []
+    for leaf in (eval_name, submission_name):
+        if leaf and leaf not in leaves:
+            leaves.append(leaf)
+    candidates = [reports_root / leaf / run_id for leaf in leaves]
+    if reports_root.is_dir():
+        for child in sorted(reports_root.iterdir()):
+            if child.is_dir():
+                candidates.append(child / run_id)
+
+    seen: set[Path] = set()
+    for cand in candidates:
+        try:
+            key = cand.resolve()
+        except OSError:
+            key = cand
+        if key in seen:
+            continue
+        seen.add(key)
+        if (cand / "summary.yaml").is_file() or (cand / "run_result.json").is_file():
+            return cand
+    return None
+
+
+def _sync_output_dir(requested: Path, actual: Path) -> None:
+    """Copy harness results into ``--output`` when eval_name() used a different leaf."""
+    if not actual.is_dir():
+        return
+    if not ((actual / "summary.yaml").is_file() or (actual / "run_result.json").is_file()):
+        return
+    try:
+        if requested.resolve() == actual.resolve():
+            return
+    except OSError:
+        pass
+    if (requested / "summary.yaml").is_file() or (requested / "run_result.json").is_file():
+        return
+    print(f"WARN: OpenShell wrote {actual}; copying into --output {requested}")
+    requested.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(actual, requested, dirs_exist_ok=True)
+
+
 def _output_paths_from_config(config: Path) -> list[str]:
     """Read outputs[].path from eval.yaml (default: ['output'])."""
     try:
@@ -405,14 +491,8 @@ class BaseRunner(ABC):
             print(f"WARNING: report.py exited {result.returncode} — treatment report.html may lack pairwise section")
 
     def _read_skill_name(self, config_path: Path) -> str:
-        """Read skill name from eval.yaml config."""
-        try:
-            import yaml
-
-            config = yaml.safe_load(config_path.read_text())
-            return config.get("skill", config_path.stem)
-        except Exception:
-            return config_path.stem
+        """Read reports-leaf name from eval.yaml (skill, then name, then stem)."""
+        return eval_dir_name(config_path, fallback=config_path.stem)
 
     @abstractmethod
     def _execute(
@@ -639,10 +719,12 @@ class OpenShellRunner(BaseRunner):
     Invokes ``python -m agent_eval.openshell.run``. Does not patch eval.yaml
     for OpenShift emptyDir and does not call harbor.run.
 
-    OpenShell writes ``$AGENT_EVAL_RUNS_DIR/<eval-name>/<run-id>/``. The
-    pipeline passes ``--output`` as that run directory
-    (``reports/<skill>/<run-id>``), so AGENT_EVAL_RUNS_DIR is set to the
-    grandparent (``reports/``).
+    OpenShell writes ``$AGENT_EVAL_RUNS_DIR/<eval-name>/<run-id>/`` where
+    eval-name is EvalConfig.eval_name() (skill, else ``name``). The pipeline
+    passes ``--output`` as that run directory (``reports/<eval-name>/<run-id>``),
+    so AGENT_EVAL_RUNS_DIR is set to the grandparent (``reports/``). If
+    ``--output``'s leaf does not match eval_name(), results are copied into
+    ``--output`` after the run so callers still find summary.yaml there.
     """
 
     name = "openshell"
@@ -670,10 +752,13 @@ class OpenShellRunner(BaseRunner):
             )
 
         rid = run_id or output.name
-        # output is reports/<eval-name>/<run-id> → runs dir is reports/
-        runs_dir = output.parent.parent
+        # Prefer an existing AGENT_EVAL_RUNS_DIR (Tekton sets reports/).
+        # Otherwise --output is reports/<eval-name>/<run-id> → grandparent.
+        env_runs = os.environ.get("AGENT_EVAL_RUNS_DIR")
+        runs_dir = Path(env_runs) if env_runs else output.parent.parent
         env = os.environ.copy()
         env["AGENT_EVAL_RUNS_DIR"] = str(runs_dir)
+        actual = runs_dir / eval_dir_name(config, fallback=output.parent.name) / rid
 
         cmd = [
             sys.executable,
@@ -689,9 +774,12 @@ class OpenShellRunner(BaseRunner):
 
         print(f"Running: {' '.join(cmd)}")
         print(f"  AGENT_EVAL_RUNS_DIR={runs_dir}")
+        print(f"  --output={output}")
+        print(f"  actual run dir={actual}")
         print(f"  OPENSHELL_GATEWAY_ENDPOINT={env.get('OPENSHELL_GATEWAY_ENDPOINT')}")
         print(f"  AGENT_EVAL_OPENSHELL_IMAGE={env.get('AGENT_EVAL_OPENSHELL_IMAGE')}")
         result = subprocess.run(cmd, env=env)
+        _sync_output_dir(output, actual)
         return result.returncode
 
 

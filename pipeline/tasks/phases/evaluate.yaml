@@ -1379,11 +1379,25 @@ spec:
         SUBMISSION_NAME="$(params.submission-name)"
         RUN_ID="$(params.pipeline-run-id)"
         
-        # Skill namespaced run dir (AEH layout); report.json uses submission-name for analyze
+        # Reports leaf matches EvalConfig.eval_name(): skill, then name, then submission
         SKILL_NAME=$(python3 -c "
         import yaml
-        config = yaml.safe_load(open('$SUBMISSION_DIR/eval.yaml'))
-        print(config.get('skill', '$SUBMISSION_NAME'))
+        config = yaml.safe_load(open('$SUBMISSION_DIR/eval.yaml')) or {}
+        execb = config.get('execution') or {}
+        skill = ''
+        if isinstance(execb, dict):
+            skill = str(execb.get('skill') or '').strip()
+        if not skill:
+            skill = str(config.get('skill') or '').strip()
+        name = str(config.get('name') or '').strip()
+        if skill:
+            print(skill)
+        elif name:
+            s = name.lower().replace(' ', '-')
+            s = ''.join(c for c in s if c.isalnum() or c in '._-')
+            print(s or '$SUBMISSION_NAME')
+        else:
+            print('$SUBMISSION_NAME')
         ")
         
         OUT_DIR="$(workspaces.source.path)/reports/${SKILL_NAME}/${RUN_ID}"
@@ -1737,10 +1751,25 @@ spec:
         SUBMISSION_NAME="$(params.submission-name)"
         RUN_ID="$(params.pipeline-run-id)"
 
+        # Reports leaf matches EvalConfig.eval_name(): skill, then name, then submission
         SKILL_NAME=$(python3 -c "
         import yaml
-        config = yaml.safe_load(open('$SUBMISSION_DIR/eval.yaml'))
-        print(config.get('skill', '$SUBMISSION_NAME'))
+        config = yaml.safe_load(open('$SUBMISSION_DIR/eval.yaml')) or {}
+        execb = config.get('execution') or {}
+        skill = ''
+        if isinstance(execb, dict):
+            skill = str(execb.get('skill') or '').strip()
+        if not skill:
+            skill = str(config.get('skill') or '').strip()
+        name = str(config.get('name') or '').strip()
+        if skill:
+            print(skill)
+        elif name:
+            s = name.lower().replace(' ', '-')
+            s = ''.join(c for c in s if c.isalnum() or c in '._-')
+            print(s or '$SUBMISSION_NAME')
+        else:
+            print('$SUBMISSION_NAME')
         ")
 
         OUT_DIR="$(workspaces.source.path)/reports/${SKILL_NAME}/${RUN_ID}"
@@ -1787,6 +1816,31 @@ spec:
         AEH_THRESHOLD=$(python3 -c "from pathlib import Path; from abevalflow.aeh_scoring import resolve_evaluation_threshold; print(resolve_evaluation_threshold(Path('$SUBMISSION_DIR') / 'metadata.yaml'))")
         echo "AEH evaluation threshold: $AEH_THRESHOLD"
 
+        REPORTS_ROOT="$(workspaces.source.path)/reports"
+        if [ ! -f "$OUT_DIR/summary.yaml" ] && [ ! -f "$OUT_DIR/run_result.json" ]; then
+          FOUND=""
+          for cand in "$REPORTS_ROOT/${SKILL_NAME}/${RUN_ID}" "$REPORTS_ROOT/${SUBMISSION_NAME}/${RUN_ID}"; do
+            if [ -f "$cand/summary.yaml" ] || [ -f "$cand/run_result.json" ]; then
+              FOUND="$cand"
+              break
+            fi
+          done
+          if [ -z "$FOUND" ]; then
+            shopt -s nullglob
+            for cand in "$REPORTS_ROOT"/*/"$RUN_ID"; do
+              if [ -f "$cand/summary.yaml" ] || [ -f "$cand/run_result.json" ]; then
+                FOUND="$cand"
+                break
+              fi
+            done
+            shopt -u nullglob
+          fi
+          if [ -n "$FOUND" ]; then
+            echo "WARN: OpenShell AEH results at $FOUND (expected $OUT_DIR); using found path"
+            OUT_DIR="$FOUND"
+          fi
+        fi
+
         if [ -f "$OUT_DIR/summary.yaml" ] || [ -f "$OUT_DIR/run_result.json" ]; then
           python "$PIPELINE_DIR/scripts/aggregate_aeh.py" "$OUT_DIR" \
             --submission-name "$SUBMISSION_NAME" \
@@ -1795,6 +1849,9 @@ spec:
             --output "$REPORT_JSON"
         else
           echo "ERROR: OpenShell AEH produced no summary.yaml or run_result.json in $OUT_DIR"
+          echo "Looked under $REPORTS_ROOT/<eval-name|submission>/$RUN_ID"
+          ls -la "$REPORTS_ROOT" 2>/dev/null || true
+          ls -la "$REPORTS_ROOT"/*/"$RUN_ID" 2>/dev/null || true
           exit 1
         fi
 
@@ -1948,8 +2005,22 @@ spec:
         # Skill namespaced run dirs (score.py); report.json uses submission-name
         SKILL_NAME=$(python3 -c "
         import yaml
-        config = yaml.safe_load(open('$SUBMISSION_DIR/$TREATMENT_CONFIG'))
-        print(config.get('skill', '$SUBMISSION_NAME'))
+        config = yaml.safe_load(open('$SUBMISSION_DIR/$TREATMENT_CONFIG')) or {}
+        execb = config.get('execution') or {}
+        skill = ''
+        if isinstance(execb, dict):
+            skill = str(execb.get('skill') or '').strip()
+        if not skill:
+            skill = str(config.get('skill') or '').strip()
+        name = str(config.get('name') or '').strip()
+        if skill:
+            print(skill)
+        elif name:
+            s = name.lower().replace(' ', '-')
+            s = ''.join(c for c in s if c.isalnum() or c in '._-')
+            print(s or '$SUBMISSION_NAME')
+        else:
+            print('$SUBMISSION_NAME')
         ")
         
         CONTROL_DIR="$REPORTS_DIR/$SKILL_NAME/control-$RUN_ID"

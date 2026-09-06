@@ -397,11 +397,70 @@ AEH-specific parameters:
 - `aeh-mode`: `single` (default) or `pairwise`
 - `aeh-control-config` / `aeh-treatment-config`: Pairwise config filenames (defaults: `eval-control.yaml` / `eval-treatment.yaml`)
 - `aeh-image`: Harbor trial image (use `quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3` or newer)
-- `aeh-runner`: Execution backend -- currently `harbor` only
+- `aeh-runner`: Execution backend — `harbor` (default) or `openshell` for `aeh_openshell_openclaw`
 
 **Note on execution backends:**
 - **harbor** (default): Containerized execution in OpenShift trial pods via AEH’s OpenShiftEnvironment.
+- **openshell**: Host orchestrator calls `python -m agent_eval.openshell.run` against the cluster OpenShell gateway (`openshell` namespace). Used only with `eval-engine=aeh_openshell_openclaw`.
 - **vanilla**: Not yet implemented in Agentic Eval Flow.
+
+#### AEH OpenShell OpenClaw (`eval-engine=aeh_openshell_openclaw`)
+
+Forge OpenClaw evals talk to the **cluster NVIDIA OpenShell** already installed in namespace `openshell` (Helm chart, Kubernetes sandboxes — not forge-saw / KubeVirt). Evaluate only sets `OPENSHELL_GATEWAY_ENDPOINT`. See [infrastructure_ops.md](infrastructure_ops.md#openshell-gateway-for-openclaw-evals).
+
+Sample in-repo: `submissions/openclaw-forge/` (`eval_engine: aeh_openshell_openclaw`, `runner.type: openclaw`).
+
+Requires optional Secret `openshell-credentials` (`M365_*`) in the **same namespace as the PipelineRun**. Client mTLS (`openshell-mtls`) is not required while the cluster gateway has TLS disabled. Override `aeh-openshell-image` to a GuyZivRH AEH image that imports `agent_eval.openshell` (stock `v1.0.x` cannot).
+
+```bash
+oc create -n guy-ziv-evalflow -f - <<'YAML'
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: aeh-openshell-openclaw-
+spec:
+  pipelineRef:
+    name: abevalflow-pipeline-dev
+  params:
+    - name: repo-url
+      value: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
+    - name: revision
+      value: "feat/aeh-openshell-openclaw"
+    - name: submission-dir
+      value: "openclaw-forge"
+    - name: eval-engine
+      value: "aeh_openshell_openclaw"
+    - name: aeh-mode
+      value: "single"
+    - name: aeh-openshell-image
+      value: "quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3"
+    - name: openshell-gateway-endpoint
+      value: "http://openshell.openshell.svc.cluster.local:8080"
+    - name: llm-model
+      value: "claude-sonnet"
+    - name: llm-api-base
+      value: "http://litellm.ab-eval-flow.svc.cluster.local:4000"
+    - name: llm-api-key
+      value: "mock"
+    - name: aeh-model-override
+      value: "claude-sonnet"
+  taskRunTemplate:
+    serviceAccountName: pipeline
+  timeouts:
+    pipeline: 2h0m0s
+    tasks: 1h30m0s
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 5Gi
+YAML
+```
+
+Konflux evaluate has no AEH OpenShell path; cluster `ci-pipeline` is enough for this engine.
 
 #### AEH Pairwise A/B Testing
 

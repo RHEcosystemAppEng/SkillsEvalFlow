@@ -627,15 +627,79 @@ class VanillaRunner(BaseRunner):
             "Use 'harbor' runner instead:\n"
             "  - For Kubernetes: --runner harbor --env-type kubernetes\n"
             "  - For local containers: --runner harbor --env-type podman\n"
+            "  - For OpenShell/OpenClaw: --runner openshell\n"
             "\n"
             "See: https://github.com/agent-eval-harness for AEH documentation."
         )
+
+
+class OpenShellRunner(BaseRunner):
+    """OpenShell execution backend (cluster OpenShell gateway + inner OpenClaw sandbox).
+
+    Invokes ``python -m agent_eval.openshell.run``. Does not patch eval.yaml
+    for OpenShift emptyDir and does not call harbor.run.
+
+    OpenShell writes ``$AGENT_EVAL_RUNS_DIR/<eval-name>/<run-id>/``. The
+    pipeline passes ``--output`` as that run directory
+    (``reports/<skill>/<run-id>``), so AGENT_EVAL_RUNS_DIR is set to the
+    grandparent (``reports/``).
+    """
+
+    name = "openshell"
+
+    def _execute(
+        self,
+        config: Path,
+        output: Path,
+        run_id: str | None = None,
+        **opts: Any,
+    ) -> int:
+        if not self.model:
+            raise RunnerError(
+                "OpenShell runner requires --model. Pass --model explicitly via CLI or pipeline parameter."
+            )
+        if not os.environ.get("AGENT_EVAL_OPENSHELL_IMAGE"):
+            raise RunnerError(
+                "OpenShell runner requires AGENT_EVAL_OPENSHELL_IMAGE "
+                "(sandbox image the forge-saw gateway can pull)."
+            )
+        if not os.environ.get("OPENSHELL_GATEWAY_ENDPOINT"):
+            raise RunnerError(
+                "OpenShell runner requires OPENSHELL_GATEWAY_ENDPOINT "
+                "(in-cluster forge-saw gateway URL)."
+            )
+
+        rid = run_id or output.name
+        # output is reports/<eval-name>/<run-id> → runs dir is reports/
+        runs_dir = output.parent.parent
+        env = os.environ.copy()
+        env["AGENT_EVAL_RUNS_DIR"] = str(runs_dir)
+
+        cmd = [
+            sys.executable,
+            "-m",
+            "agent_eval.openshell.run",
+            "--config",
+            str(config),
+            "--model",
+            self.model,
+            "--run-id",
+            rid,
+        ]
+
+        print(f"Running: {' '.join(cmd)}")
+        print(f"  AGENT_EVAL_RUNS_DIR={runs_dir}")
+        print(f"  OPENSHELL_GATEWAY_ENDPOINT={env.get('OPENSHELL_GATEWAY_ENDPOINT')}")
+        print(f"  AGENT_EVAL_OPENSHELL_IMAGE={env.get('AGENT_EVAL_OPENSHELL_IMAGE')}")
+        result = subprocess.run(cmd, env=env)
+        return result.returncode
 
 
 # Registry of available runners
 RUNNERS: dict[str, type[BaseRunner]] = {
     "harbor": HarborRunner,
     "vanilla": VanillaRunner,
+    "openshell": OpenShellRunner,
 }
 
 
@@ -669,7 +733,11 @@ def main() -> int:
         "--runner",
         choices=list(RUNNERS.keys()),
         default="harbor",
-        help=("Execution backend (default: harbor). 'vanilla' is a placeholder and raises RunnerError if selected."),
+        help=(
+            "Execution backend (default: harbor). "
+            "'openshell' talks to a forge-saw gateway. "
+            "'vanilla' raises RunnerError."
+        ),
     )
     common.add_argument("--model", help="Model for skill execution")
     common.add_argument("--judge-model", help="Model for LLM judges")

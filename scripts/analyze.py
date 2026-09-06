@@ -639,7 +639,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--eval-engine",
         type=str,
-        choices=["harbor", "ase", "both", "a2a", "aeh"],
+        choices=["harbor", "ase", "both", "a2a", "aeh", "aeh_openshell_openclaw"],
         default="harbor",
         help="Evaluation engine used (for provenance tagging and analysis path)",
     )

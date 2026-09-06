@@ -23,7 +23,7 @@ spec:
   params:
     - name: eval-engine
       type: string
-      description: Evaluation engine (harbor, ase, mcpchecker, a2a, aeh, both)
+      description: Evaluation engine (harbor, ase, mcpchecker, a2a, aeh, aeh_openshell_openclaw, both)
     - name: submission-dir
       type: string
       description: Submission directory name under submissions/
@@ -158,7 +158,7 @@ spec:
     - name: aeh-runner
       type: string
       default: "harbor"
-      description: AEH execution backend (harbor, vanilla)
+      description: AEH execution backend (harbor, vanilla, openshell)
     - name: enable-mlflow
       type: string
       default: "false"
@@ -179,6 +179,40 @@ spec:
       description: >-
         Optional prior AEH run-id for score.py regression --baseline (relative
         drift). Empty skips the baseline comparison.
+    # OpenShell / forge-saw (eval-engine=aeh_openshell_openclaw)
+    - name: aeh-openshell-image
+      type: string
+      default: "quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3"
+      description: >-
+        Orchestrator image with GuyZivRH agent_eval.openshell plus the openshell
+        CLI. Override this — stock v1.0.x cannot import agent_eval.openshell.
+    - name: openshell-gateway-endpoint
+      type: string
+      default: "http://openshell.openshell.svc.cluster.local:8080"
+      description: >-
+        In-cluster NVIDIA OpenShell gateway (namespace openshell, gRPC :8080).
+        Override only if using a different gateway (e.g. forge-saw :17670).
+    - name: openshell-sandbox-image
+      type: string
+      default: "quay.io/aipcc/base-images/agentic/openclaw:latest"
+      description: Sandbox image the SAW gateway pulls for OpenClaw
+    - name: openshell-provider
+      type: string
+      default: ""
+      description: AGENT_EVAL_OPENSHELL_PROVIDER (optional)
+    - name: openshell-mtls-secret
+      type: string
+      default: "openshell-mtls"
+      description: Secret in the PipelineRun namespace with OpenShell CLI mTLS files
+    - name: openshell-credentials-secret
+      type: string
+      default: "openshell-credentials"
+      description: Secret with M365_* keys (optional keys)
+  volumes:
+    - name: openshell-mtls
+      secret:
+        secretName: $(params.openshell-mtls-secret)
+        optional: true
   workspaces:
     - name: source
       description: Workspace containing the cloned submissions repository
@@ -1501,6 +1535,260 @@ spec:
           exit "$AEH_EXIT"
         fi
 
+    # Step 12b: AEH OpenShell OpenClaw (cluster OpenShell gateway). Not Harbor trial pods.
+    - name: aeh-openshell-eval
+      when:
+        - input: "$(params.eval-engine)"
+          operator: in
+          values: ["aeh_openshell_openclaw"]
+      image: $(params.aeh-openshell-image)
+      timeout: "2h"
+      computeResources:
+        requests:
+          cpu: "500m"
+          memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+      volumeMounts:
+        - name: openshell-mtls
+          mountPath: /tmp/.config/openshell
+          readOnly: true
+      env:
+        - name: HOME
+          value: /tmp
+        - name: AGENT_EVAL_RUNS_DIR
+          value: $(workspaces.source.path)/reports
+        - name: OPENSHELL_GATEWAY_ENDPOINT
+          value: "$(params.openshell-gateway-endpoint)"
+        - name: AGENT_EVAL_OPENSHELL_IMAGE
+          value: "$(params.openshell-sandbox-image)"
+        - name: AGENT_EVAL_OPENSHELL_PROVIDER
+          value: "$(params.openshell-provider)"
+        - name: ANTHROPIC_BASE_URL
+          value: "$(params.llm-api-base)"
+        - name: ANTHROPIC_API_KEY
+          value: "$(params.llm-api-key)"
+        - name: M365_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: $(params.openshell-credentials-secret)
+              key: M365_ACCESS_TOKEN
+              optional: true
+        - name: M365_USER
+          valueFrom:
+            secretKeyRef:
+              name: $(params.openshell-credentials-secret)
+              key: M365_USER
+              optional: true
+        - name: M365_TENANT_ID
+          valueFrom:
+            secretKeyRef:
+              name: $(params.openshell-credentials-secret)
+              key: M365_TENANT_ID
+              optional: true
+        - name: M365_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: $(params.openshell-credentials-secret)
+              key: M365_CLIENT_ID
+              optional: true
+        - name: M365_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: $(params.openshell-credentials-secret)
+              key: M365_CLIENT_SECRET
+              optional: true
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        EVAL_ENGINE="$(params.eval-engine)"
+        if [ "$EVAL_ENGINE" != "aeh_openshell_openclaw" ]; then
+          echo "Skipping AEH OpenShell eval (eval-engine=$EVAL_ENGINE)"
+          exit 0
+        fi
+
+        unset ANTHROPIC_VERTEX_PROJECT_ID || true
+
+        # Secret mounts flat at $HOME/.config/openshell. OpenShell CLI expects
+        # gateways/<sandbox>/mtls/{ca.crt,tls.crt,tls.key}.
+        GW_NAME="${OPENSHELL_GATEWAY_NAME:-openshell}"
+        MTLS_SRC="${HOME}/.config/openshell"
+        MTLS_DST="${HOME}/.config/openshell/gateways/${GW_NAME}/mtls"
+        if [ -f "$MTLS_SRC/tls.crt" ] && [ -f "$MTLS_SRC/tls.key" ]; then
+          mkdir -p "$MTLS_DST"
+          cp -f "$MTLS_SRC/ca.crt" "$MTLS_DST/" 2>/dev/null || true
+          cp -f "$MTLS_SRC/tls.crt" "$MTLS_DST/"
+          cp -f "$MTLS_SRC/tls.key" "$MTLS_DST/"
+          chmod 600 "$MTLS_DST"/* 2>/dev/null || true
+          python3 - "$HOME/.config/openshell/gateways/${GW_NAME}/metadata.json" "$GW_NAME" "${OPENSHELL_GATEWAY_ENDPOINT:-}" <<'META'
+        import json, sys, urllib.parse
+        path, name, endpoint = sys.argv[1:4]
+        parsed = urllib.parse.urlparse(endpoint)
+        payload = {
+            "name": name,
+            "gateway_endpoint": endpoint,
+            "is_remote": True,
+            "gateway_port": parsed.port or 8080,
+            "auth_mode": "none",
+        }
+        open(path, "w").write(json.dumps(payload))
+        META
+        fi
+
+        AEH_OS_IMAGE="$(params.aeh-openshell-image)"
+        if ! python3 -c "import agent_eval.openshell.run" 2>/dev/null; then
+          echo "ERROR: image $AEH_OS_IMAGE cannot import agent_eval.openshell."
+          echo "Rebuild from GuyZivRH agent-eval-harness main and include the openshell CLI."
+          exit 1
+        fi
+
+        echo "=== EVALUATE PHASE: AEH OpenShell OpenClaw ==="
+        echo "OPENSHELL_GATEWAY_ENDPOINT=${OPENSHELL_GATEWAY_ENDPOINT:-unset}"
+        echo "AGENT_EVAL_OPENSHELL_IMAGE=${AGENT_EVAL_OPENSHELL_IMAGE:-unset}"
+        echo "ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-unset}"
+
+        echo "=== OpenShell gateway preflight ==="
+        python3 - <<'PREFLIGHT'
+        import os, socket, sys, urllib.parse
+        url = os.environ.get("OPENSHELL_GATEWAY_ENDPOINT", "")
+        if not url:
+            print("ERROR: OPENSHELL_GATEWAY_ENDPOINT is empty", file=sys.stderr)
+            sys.exit(1)
+        parsed = urllib.parse.urlparse(url)
+        host = parsed.hostname
+        port = parsed.port or (443 if parsed.scheme == "https" else 8080)
+        if not host:
+            print(f"ERROR: cannot parse host from {url!r}", file=sys.stderr)
+            sys.exit(1)
+        try:
+            sock = socket.create_connection((host, port), timeout=15)
+            sock.close()
+        except OSError as exc:
+            print(
+                f"ERROR: OpenShell gateway unreachable at {host}:{port} ({exc}). "
+                "Expected the cluster Helm gateway at "
+                "http://openshell.openshell.svc.cluster.local:8080.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        print(f"gateway reachable {host}:{port}")
+        PREFLIGHT
+
+        if command -v openshell >/dev/null 2>&1; then
+          openshell --gateway-endpoint "$OPENSHELL_GATEWAY_ENDPOINT" sandbox list \
+            || echo "WARN: openshell sandbox list failed (mTLS/OIDC?); continuing to run"
+        else
+          echo "WARN: openshell CLI not on PATH in orchestrator image"
+        fi
+
+        SUBMISSION_DIR="$(workspaces.source.path)/submissions/$(params.submission-dir)"
+        SUBMISSION_NAME="$(params.submission-name)"
+        RUN_ID="$(params.pipeline-run-id)"
+
+        SKILL_NAME=$(python3 -c "
+        import yaml
+        config = yaml.safe_load(open('$SUBMISSION_DIR/eval.yaml'))
+        print(config.get('skill', '$SUBMISSION_NAME'))
+        ")
+
+        OUT_DIR="$(workspaces.source.path)/reports/${SKILL_NAME}/${RUN_ID}"
+        REPORT_JSON="$(workspaces.source.path)/reports/${SUBMISSION_NAME}/report.json"
+
+        mkdir -p "$OUT_DIR" "$(workspaces.source.path)/reports/${SUBMISSION_NAME}"
+
+        MODEL="$(params.aeh-model-override)"
+        if [ -z "$MODEL" ]; then
+          MODEL=$(python3 -c "
+        import yaml
+        config = yaml.safe_load(open('$SUBMISSION_DIR/eval.yaml'))
+        models = config.get('models', {})
+        if isinstance(models, str):
+            print(models)
+        else:
+            print(models.get('skill', 'claude-sonnet'))
+        ")
+        fi
+
+        JUDGE_OVERRIDE="$(params.aeh-judge-model-override)"
+        if [ -z "$JUDGE_OVERRIDE" ] && [ -n "$MODEL" ]; then
+          JUDGE_OVERRIDE="$MODEL"
+        fi
+
+        PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
+        export PYTHONPATH="$PIPELINE_DIR:${PYTHONPATH:-}"
+
+        echo "Submission: $SUBMISSION_DIR"
+        echo "Output: $OUT_DIR"
+        echo "Model: $MODEL"
+
+        set +e
+        python "$PIPELINE_DIR/scripts/run_aeh.py" single \
+          --runner openshell \
+          --config "$SUBMISSION_DIR/eval.yaml" \
+          --output "$OUT_DIR" \
+          --run-id "$RUN_ID" \
+          ${MODEL:+--model "$MODEL"} \
+          ${JUDGE_OVERRIDE:+--judge-model "$JUDGE_OVERRIDE"}
+        AEH_EXIT=$?
+        set -e
+
+        export PYTHONPATH="$PIPELINE_DIR"
+        pip install --quiet --no-cache-dir pyyaml 2>&1 | tail -1
+
+        AEH_THRESHOLD=$(python3 -c "from pathlib import Path; from abevalflow.aeh_scoring import resolve_evaluation_threshold; print(resolve_evaluation_threshold(Path('$SUBMISSION_DIR') / 'metadata.yaml'))")
+        echo "AEH evaluation threshold: $AEH_THRESHOLD"
+
+        if [ -f "$OUT_DIR/summary.yaml" ] || [ -f "$OUT_DIR/run_result.json" ]; then
+          python "$PIPELINE_DIR/scripts/aggregate_aeh.py" "$OUT_DIR" \
+            --submission-name "$SUBMISSION_NAME" \
+            --threshold "$AEH_THRESHOLD" \
+            --eval-engine aeh_openshell_openclaw \
+            --output "$REPORT_JSON"
+        else
+          echo "ERROR: OpenShell AEH produced no summary.yaml or run_result.json in $OUT_DIR"
+          exit 1
+        fi
+
+        python3 - "$OUT_DIR" "$(workspaces.source.path)/_eval_tmp" "$AEH_THRESHOLD" <<'PARSE_AEH'
+        import json, sys, yaml
+        from pathlib import Path
+
+        out_dir = Path(sys.argv[1])
+        tmp_dir = Path(sys.argv[2])
+        threshold = float(sys.argv[3])
+
+        mean_reward = 0.0
+
+        summary_path = out_dir / "summary.yaml"
+        if summary_path.exists():
+            summary = yaml.safe_load(summary_path.read_text())
+            mean_reward = summary.get("mean_reward", 0.0)
+
+        run_result_path = out_dir / "run_result.json"
+        if run_result_path.exists():
+            run_result = json.loads(run_result_path.read_text())
+            if "mean_reward" in run_result:
+                mean_reward = run_result["mean_reward"]
+
+        rec = "pass" if (mean_reward is not None and mean_reward >= threshold) else "fail"
+
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        reward_str = f"{mean_reward:.4f}" if mean_reward is not None else "0.0000"
+        (tmp_dir / "treatment-reward").write_text(reward_str)
+        (tmp_dir / "control-reward").write_text("0.0000")
+        (tmp_dir / "recommendation").write_text(rec)
+
+        print(f"AEH OpenShell mean reward: {reward_str} (threshold={threshold})")
+        print(f"Recommendation: {rec}")
+        PARSE_AEH
+
+        if [ "$AEH_EXIT" -ne 0 ]; then
+          echo "ERROR: AEH OpenShell evaluation exited $AEH_EXIT (report written if outputs existed)"
+          exit "$AEH_EXIT"
+        fi
+
     # Step 13: AEH - Pairwise A/B Evaluation (consolidated)
     # Depends on: prepare, validate. Skipped unless eval-engine=aeh and aeh-mode=pairwise.
     # Run dirs stay under reports/<skill>/ for score.py; report.json uses submission-name.
@@ -1838,10 +2126,15 @@ spec:
         #   single:    aeh-jobs/YYYY-MM-DD__…
         #   pairwise:  aeh-control-jobs-<run>/… and aeh-treatment-jobs-<run>/…
         # Point store at _eval_tmp so publish.py can discover both layouts.
+        # OpenShell writes under reports/<skill>/<run-id>/ — keep reports, not _eval_tmp.
         if [ "$(params.eval-engine)" = "aeh" ]; then
           echo -n "$EVAL_TMP" > "$(results.results-dir.path)"
           echo "AEH results-dir: $EVAL_TMP"
           ls -la "$EVAL_TMP" 2>/dev/null | head -40 || true
+        elif [ "$(params.eval-engine)" = "aeh_openshell_openclaw" ]; then
+          REPORTS="$(workspaces.source.path)/reports/$(params.submission-name)"
+          echo -n "$REPORTS" > "$(results.results-dir.path)"
+          echo "OpenShell AEH results-dir: $REPORTS"
         fi
         
         echo "Treatment reward: $T_REWARD"

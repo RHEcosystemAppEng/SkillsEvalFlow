@@ -134,6 +134,7 @@ def aggregate_single_run(
     *,
     submission_name: str | None = None,
     threshold: float = DEFAULT_AEH_THRESHOLD,
+    eval_engine: str = "aeh",
 ) -> dict[str, Any]:
     """Read one AEH harness run directory and produce report dict.
 
@@ -192,7 +193,7 @@ def aggregate_single_run(
     return {
         "submission_name": resolved_name,
         "provenance": {
-            "eval_engine": "aeh",
+            "eval_engine": eval_engine,
             "pipeline_run_id": summary.get("run_id", run_dir.name),
         },
         "summary": {
@@ -218,7 +219,7 @@ def aggregate_single_run(
             "treatment": _trials_from_per_case(per_case_full),
             "control": [],
         },
-        "eval_engine": "aeh",
+        "eval_engine": eval_engine,
         "mode": "single",
         "run_id": summary.get("run_id", run_dir.name),
         "mean_reward": mean_reward,
@@ -240,6 +241,7 @@ def aggregate_pairwise_run(
     *,
     submission_name: str | None = None,
     threshold: float = DEFAULT_AEH_THRESHOLD,
+    eval_engine: str = "aeh",
 ) -> dict[str, Any]:
     """Read pairwise AEH run directories and produce report dict.
 
@@ -306,7 +308,7 @@ def aggregate_pairwise_run(
     return {
         "submission_name": resolved_name,
         "provenance": {
-            "eval_engine": "aeh",
+            "eval_engine": eval_engine,
             "pipeline_run_id": treatment_summary.get("run_id", treatment_dir.name),
         },
         "summary": {
@@ -332,7 +334,7 @@ def aggregate_pairwise_run(
             "treatment": _trials_from_per_case(treatment_per_case),
             "control": _trials_from_per_case(control_per_case),
         },
-        "eval_engine": "aeh",
+        "eval_engine": eval_engine,
         "mode": "pairwise",
         "treatment": {
             "run_id": treatment_summary.get("run_id", treatment_dir.name),
@@ -375,6 +377,7 @@ def aggregate_aeh_results(
     *,
     submission_name: str | None = None,
     threshold: float = DEFAULT_AEH_THRESHOLD,
+    eval_engine: str = "aeh",
 ) -> dict[str, Any]:
     """Aggregate AEH results into Agentic Eval Flow report format.
 
@@ -396,11 +399,13 @@ def aggregate_aeh_results(
             control_dir,
             submission_name=submission_name,
             threshold=threshold,
+            eval_engine=eval_engine,
         )
     return aggregate_single_run(
         run_dir,
         submission_name=submission_name,
         threshold=threshold,
+        eval_engine=eval_engine,
     )
 
 
@@ -466,6 +471,12 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_AEH_THRESHOLD,
         help=f"Pass/fail threshold (default: {DEFAULT_AEH_THRESHOLD})",
     )
+    parser.add_argument(
+        "--eval-engine",
+        type=str,
+        default="aeh",
+        help="Stamp eval_engine in report.json (aeh or aeh_openshell_openclaw)",
+    )
     args = parser.parse_args(argv)
 
     run_dir: Path = args.run_dir
@@ -488,6 +499,7 @@ def main(argv: list[str] | None = None) -> int:
             control_dir=args.control_dir,
             submission_name=args.submission_name,
             threshold=args.threshold,
+            eval_engine=args.eval_engine,
         )
     except FileNotFoundError as e:
         logger.error(str(e))

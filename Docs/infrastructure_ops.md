@@ -134,6 +134,29 @@ The AEH runner image (`containers/agent-eval-harness/Containerfile`) bakes
 when those imports are missing (older images). Rebuild/push the AEH image after
 changing that Containerfile.
 
+## OpenShell gateway for OpenClaw evals
+
+`eval-engine=aeh_openshell_openclaw` uses the **NVIDIA OpenShell already
+installed** on this cluster (Helm release `openshell` in namespace `openshell`,
+image `ghcr.io/nvidia/openshell/gateway`). Sandboxes are Kubernetes pods in
+that namespace, not KubeVirt VMs. Evaluate does not install OpenShell; it only
+calls:
+
+```text
+http://openshell.openshell.svc.cluster.local:8080
+```
+
+That Service is reachable from `guy-ziv-evalflow` (gRPC `:8080`, TLS disabled
+on the current gateway.toml). Optional Secret `openshell-credentials` (`M365_*`)
+still belongs in the PipelineRun namespace. `openshell-mtls` is optional while
+the gateway has `disable_tls = true`.
+
+forge-saw (KubeVirt VM on `:17670`) is a different OpenShell host for clusters
+that run OpenShift Virtualization. Do not Helm-install it on this ROSA cluster.
+See `config/forge-saw/README.md` only if you are targeting a CNV cluster.
+
+Trigger example: [trigger_guide.md](trigger_guide.md) (`eval-engine=aeh_openshell_openclaw`).
+
 ## Cleanup CronJob
 
 Runs daily at 03:00 UTC. Configurable via environment variables:

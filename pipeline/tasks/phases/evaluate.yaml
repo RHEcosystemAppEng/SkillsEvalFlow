@@ -1306,11 +1306,11 @@ spec:
       timeout: "2h"
       computeResources:
         requests:
-          cpu: "500m"
-          memory: "512Mi"
+          cpu: "100m"
+          memory: "128Mi"
         limits:
-          cpu: "1000m"
-          memory: "2Gi"
+          cpu: "500m"
+          memory: "1Gi"
       env:
         - name: HOME
           value: /tmp
@@ -1545,11 +1545,11 @@ spec:
       timeout: "2h"
       computeResources:
         requests:
-          cpu: "500m"
-          memory: "512Mi"
+          cpu: "100m"
+          memory: "128Mi"
         limits:
-          cpu: "1000m"
-          memory: "2Gi"
+          cpu: "500m"
+          memory: "1Gi"
       volumeMounts:
         - name: openshell-mtls
           mountPath: /tmp/.config/openshell
@@ -1801,11 +1801,11 @@ spec:
       timeout: "4h"
       computeResources:
         requests:
-          cpu: "500m"
-          memory: "512Mi"
+          cpu: "100m"
+          memory: "128Mi"
         limits:
-          cpu: "1000m"
-          memory: "2Gi"
+          cpu: "500m"
+          memory: "1Gi"
       env:
         - name: HOME
           value: /tmp

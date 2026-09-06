@@ -188,8 +188,8 @@ spec:
 
     - name: aeh-openshell-image
       type: string
-      default: "quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3"
-      description: Orchestrator image with GuyZivRH OpenShell module + openshell CLI
+      default: "quay.io/aipcc/base-images/agentic/openclaw:latest"
+      description: Orchestrator image with harness + openshell CLI
     - name: agent-eval-harness-repo-url
       type: string
       default: "https://github.com/GuyZivRH/agent-eval-harness.git"

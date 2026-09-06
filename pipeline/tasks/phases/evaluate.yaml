@@ -182,10 +182,10 @@ spec:
     # OpenShell / forge-saw (eval-engine=aeh_openshell_openclaw)
     - name: aeh-openshell-image
       type: string
-      default: "quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3"
+      default: "quay.io/aipcc/base-images/agentic/openclaw:latest"
       description: >-
         Orchestrator image with GuyZivRH agent_eval.openshell plus the openshell
-        CLI. Override this — stock v1.0.x cannot import agent_eval.openshell.
+        CLI.
     - name: agent-eval-harness-repo-url
       type: string
       default: "https://github.com/GuyZivRH/agent-eval-harness.git"
@@ -1659,16 +1659,17 @@ spec:
         fi
 
         AEH_OS_IMAGE="$(params.aeh-openshell-image)"
-        HARNESS_DIR="$(workspaces.source.path)/_harness"
         PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
-        export PYTHONPATH="$HARNESS_DIR:$PIPELINE_DIR:${PYTHONPATH:-}"
+        export PYTHONPATH="$PIPELINE_DIR:${PYTHONPATH:-}"
 
-        # Ensure openshell CLI is available
-        if ! command -v openshell >/dev/null 2>&1; then
-          echo "Installing openshell CLI v$(params.openshell-cli-version)..."
-          mkdir -p /tmp/bin
-          curl -fsSL "https://github.com/NVIDIA/OpenShell/releases/download/v$(params.openshell-cli-version)/openshell-linux-amd64.tar.gz" | tar -xz -C /tmp/bin openshell
-          export PATH="/tmp/bin:$PATH"
+        if ! python3 -c "import agent_eval.openshell.run" 2>/dev/null; then
+          # Fallback: clone harness if not in image
+          HARNESS_DIR="$(workspaces.source.path)/_harness"
+          if [ ! -d "$HARNESS_DIR/.git" ]; then
+            git clone --depth 1 --branch "$(params.agent-eval-harness-repo-revision)" \
+              "$(params.agent-eval-harness-repo-url)" "$HARNESS_DIR"
+          fi
+          export PYTHONPATH="$HARNESS_DIR:$PYTHONPATH"
         fi
 
         if ! python3 -c "import agent_eval.openshell.run" 2>/dev/null; then

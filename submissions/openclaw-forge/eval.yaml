@@ -5,7 +5,8 @@ name: forge-eval-rubrics
 scene: monday-acquisition
 
 models:
-  # LiteLLM in-cluster alias (override via aeh-model-override).
+  # LiteLLM in-cluster alias (override via aeh-model-override). OpenClaw
+  # --model is qualified as inference/<id> by the harness from providers below.
   skill: claude-sonnet
   # Vertex publisher id (short alias "claude-sonnet-4" also remapped in score.py)
   judge: claude-sonnet-4-5@20250929
@@ -25,12 +26,16 @@ runner:
     .openclaw/tmp/ — never /tmp (path escapes the sandbox root).
     Never send mail or create events. Read-only task.
   providers:
+    # openai-completions against in-cluster LiteLLM (not Anthropic native).
+    # Local OpenShell can instead use https://inference.local/v1 when the
+    # gateway inference provider is registered.
     inference:
-      baseUrl: https://inference.local/v1
-      apiKey: empty
+      baseUrl: http://litellm.ab-eval-flow.svc.cluster.local:4000/v1
+      api: openai-completions
+      apiKey: "$ANTHROPIC_API_KEY"
       models:
-        - id: claude-sonnet-4
-          name: Claude Sonnet 4
+        - id: claude-sonnet
+          name: Claude Sonnet
           api: openai-completions
 
 execution:

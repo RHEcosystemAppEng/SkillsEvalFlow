@@ -1658,30 +1658,28 @@ spec:
         META
         fi
 
-        AEH_OS_IMAGE="$(params.aeh-openshell-image)"
-        PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
-        export PYTHONPATH="$PIPELINE_DIR:${PYTHONPATH:-}"
-
-        if ! python3 -c "import agent_eval.openshell.run" 2>/dev/null; then
-          # Fallback: clone harness if not in image
-          HARNESS_DIR="$(workspaces.source.path)/_harness"
-          if [ ! -d "$HARNESS_DIR/.git" ]; then
-            git clone --depth 1 --branch "$(params.agent-eval-harness-repo-revision)" \
-              "$(params.agent-eval-harness-repo-url)" "$HARNESS_DIR"
-          fi
-          export PYTHONPATH="$HARNESS_DIR:$PYTHONPATH"
-        fi
-
-        if ! python3 -c "import agent_eval.openshell.run" 2>/dev/null; then
-          echo "ERROR: image $AEH_OS_IMAGE cannot import agent_eval.openshell."
-          echo "Rebuild from GuyZivRH agent-eval-harness main and include the openshell CLI."
-          exit 1
-        fi
-
         echo "=== EVALUATE PHASE: AEH OpenShell OpenClaw ==="
+        echo "Orchestrator image: $(params.aeh-openshell-image)"
         echo "OPENSHELL_GATEWAY_ENDPOINT=${OPENSHELL_GATEWAY_ENDPOINT:-unset}"
         echo "AGENT_EVAL_OPENSHELL_IMAGE=${AGENT_EVAL_OPENSHELL_IMAGE:-unset}"
         echo "ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-unset}"
+
+        PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
+        HARNESS_DIR="$(workspaces.source.path)/_harness"
+        export PYTHONPATH="$PIPELINE_DIR:$HARNESS_DIR:${PYTHONPATH:-}"
+
+        if ! python3 -c "import agent_eval.openshell.run" 2>/dev/null; then
+          echo "Harness not in image or missing dependencies, installing..."
+          pip install --quiet --no-cache-dir pyyaml pydantic jinja2 openai 2>/dev/null || true
+        fi
+
+        if ! python3 -c "import agent_eval.openshell.run"; then
+          echo "ERROR: image $(params.aeh-openshell-image) cannot import agent_eval.openshell."
+          echo "PYTHONPATH: $PYTHONPATH"
+          echo "Pip list:"
+          python3 -m pip list 2>/dev/null || echo "pip not available"
+          exit 1
+        fi
 
         echo "=== OpenShell gateway preflight ==="
         python3 - <<'PREFLIGHT'

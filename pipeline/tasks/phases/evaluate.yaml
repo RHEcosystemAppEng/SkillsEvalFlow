@@ -1598,6 +1598,9 @@ spec:
           value: "$(params.llm-api-base)"
         - name: ANTHROPIC_API_KEY
           value: "$(params.llm-api-key)"
+        # Orchestrator env. AEH OpenShell forwards these into sandbox exec via
+        # _FORWARD_ENV and eval.yaml execution.env $M365_* resolution. seed:
+        # external — mailbox is pre-seeded; do not populate crabline/smolclaw.
         - name: M365_ACCESS_TOKEN
           valueFrom:
             secretKeyRef:

@@ -186,7 +186,7 @@ spec:
       default: "http://openshell.openshell.svc.cluster.local:8080"
     - name: openshell-sandbox-image
       type: string
-      default: "quay.io/aipcc/base-images/agentic/openclaw:latest"
+      default: "quay.io/aipcc/base-images/agentic/openclaw:0.0.1-1787755593"
     - name: openshell-provider
       type: string
       default: ""

@@ -1,7 +1,12 @@
 # IBM Forge M365-only scene (Slack deferred — no bot token yet)
 #
-# Ground truth: seeded Outlook + calendar for tbx-demo2 via Graph
-# (examples/forge-real/seed_m365_graph.py → .tmp/forge-real/ground-truth.json)
+# seed: external means the Outlook mailbox/calendar is already populated
+# (offline: examples/forge-real/seed_m365_graph.py → ground-truth.json).
+# AEH OpenShell does not run that seeder at eval time — it only forwards
+# M365_* tokens from openshell-credentials into the sandbox exec env.
+#
+# Crabline = Slack mock, smolclaw = Gmail/Calendar mock. Those are generic
+# AEH OpenShell seeders, not what Forge uses. Keep both lists empty.
 #
 # Slack channels documented for a future dual-source run; not used this run.
 

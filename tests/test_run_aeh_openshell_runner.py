@@ -134,3 +134,48 @@ class TestOpenShellRunnerExecute:
         assert runner.run_single(config, output, run_id=output.name) == 0
         assert (output / "summary.yaml").is_file()
         assert (output / "run_result.json").is_file()
+
+    @patch("subprocess.run")
+    def test_patches_eval_yaml_judge_model(self, mock_run, tmp_path, monkeypatch):
+        monkeypatch.setenv("AGENT_EVAL_OPENSHELL_IMAGE", "quay.io/example/openclaw:0.0.1-1787755593")
+        monkeypatch.setenv("OPENSHELL_GATEWAY_ENDPOINT", "http://openshell.example:8080")
+        captured: dict = {}
+
+        def fake_run(cmd, env=None, **kwargs):
+            cfg = Path(cmd[cmd.index("--config") + 1])
+            captured["path"] = cfg
+            captured["yaml"] = yaml.safe_load(cfg.read_text())
+            captured["env"] = env
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = fake_run
+        output = tmp_path / "reports" / "openclaw-forge" / "run-1"
+        config = tmp_path / "eval.yaml"
+        config.write_text(
+            yaml.dump(
+                {
+                    "name": "forge-eval-rubrics",
+                    "models": {"skill": "claude-sonnet", "judge": "claude-sonnet-4-5@20250929"},
+                    "dataset": {"path": "cases"},
+                }
+            )
+        )
+        runner = OpenShellRunner(model="claude-sonnet", judge_model="claude-sonnet")
+        assert runner.run_single(config, output, run_id="run-1") == 0
+        assert captured["path"] != config
+        assert captured["yaml"]["models"]["judge"] == "claude-sonnet"
+        assert captured["yaml"]["dataset"]["path"] == "cases"
+        assert captured["env"]["EVAL_JUDGE_MODEL"] == "claude-sonnet"
+        assert not captured["path"].exists()
+
+
+class TestEvaluateOpenshellJudgeDeps:
+    def test_openshell_evaluate_installs_anthropic(self):
+        evaluate = Path(__file__).resolve().parents[1] / "pipeline" / "tasks" / "phases" / "evaluate.yaml"
+        spec = yaml.safe_load(evaluate.read_text())["spec"]
+        script = next(s["script"] for s in spec["steps"] if s["name"] == "aeh-openshell-eval")
+        assert "anthropic" in script
+        assert "aeh-judge-pkgs" in script
+        assert "from scripts.aggregate_aeh import _extract_mean_reward" in script
+        assert 'summary.get("mean_reward", 0.0)' not in script
+        assert 'control-reward").write_text("0.0000")' not in script

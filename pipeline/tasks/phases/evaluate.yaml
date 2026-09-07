@@ -1691,11 +1691,22 @@ spec:
 
         PIPELINE_DIR="$(workspaces.source.path)/_pipeline"
         HARNESS_DIR="$(workspaces.source.path)/_harness"
-        export PYTHONPATH="$PIPELINE_DIR:$HARNESS_DIR:${PYTHONPATH:-}"
+        # Judge scoring (score.py) runs in this UBI orchestrator, not the
+        # OpenClaw sandbox. Local .eval-venv has anthropic/jinja2/yaml;
+        # install the same packages here so LLM judges can import.
+        JUDGE_PKG_DIR="/tmp/aeh-judge-pkgs"
+        mkdir -p "$JUDGE_PKG_DIR"
+        echo "=== Installing orchestrator judge dependencies ==="
+        python3 -m pip install --no-cache-dir --target "$JUDGE_PKG_DIR" \
+          'pyyaml>=6.0' 'jinja2>=3.0' 'pydantic' 'anthropic>=0.40' \
+          2>&1 | tail -20
+        export PYTHONPATH="$JUDGE_PKG_DIR:$PIPELINE_DIR:$HARNESS_DIR:${PYTHONPATH:-}"
+        python3 -c "import anthropic, yaml, jinja2; print('judge deps OK', 'anthropic', anthropic.__version__)"
 
         if ! python3 -c "import agent_eval.openshell.run" 2>/dev/null; then
-          echo "Harness not in image or missing dependencies, installing..."
-          pip install --quiet --no-cache-dir pyyaml pydantic jinja2 openai 2>/dev/null || true
+          echo "Harness not importable after PYTHONPATH setup"
+          python3 -c "import sys; print('\\n'.join(sys.path))"
+          exit 1
         fi
 
         # Ensure openshell CLI is available
@@ -1810,8 +1821,8 @@ spec:
         AEH_EXIT=$?
         set -e
 
+        # Keep JUDGE_PKG_DIR on PYTHONPATH; UBI site-packages is not writable.
         export PYTHONPATH="$PIPELINE_DIR:${PYTHONPATH:-}"
-        pip install --quiet --no-cache-dir pyyaml 2>&1 | tail -1
 
         AEH_THRESHOLD=$(python3 -c "from pathlib import Path; from abevalflow.aeh_scoring import resolve_evaluation_threshold; print(resolve_evaluation_threshold(Path('$SUBMISSION_DIR') / 'metadata.yaml'))")
         echo "AEH evaluation threshold: $AEH_THRESHOLD"
@@ -1856,32 +1867,22 @@ spec:
         fi
 
         python3 - "$OUT_DIR" "$(workspaces.source.path)/_eval_tmp" "$AEH_THRESHOLD" <<'PARSE_AEH'
-        import json, sys, yaml
+        import sys
         from pathlib import Path
+
+        from scripts.aggregate_aeh import _extract_mean_reward
 
         out_dir = Path(sys.argv[1])
         tmp_dir = Path(sys.argv[2])
         threshold = float(sys.argv[3])
 
-        mean_reward = 0.0
-
-        summary_path = out_dir / "summary.yaml"
-        if summary_path.exists():
-            summary = yaml.safe_load(summary_path.read_text())
-            mean_reward = summary.get("mean_reward", 0.0)
-
-        run_result_path = out_dir / "run_result.json"
-        if run_result_path.exists():
-            run_result = json.loads(run_result_path.read_text())
-            if "mean_reward" in run_result:
-                mean_reward = run_result["mean_reward"]
-
+        mean_reward = _extract_mean_reward(out_dir)
         rec = "pass" if (mean_reward is not None and mean_reward >= threshold) else "fail"
 
         tmp_dir.mkdir(parents=True, exist_ok=True)
-        reward_str = f"{mean_reward:.4f}" if mean_reward is not None else "0.0000"
+        reward_str = f"{mean_reward:.4f}" if mean_reward is not None else "N/A"
         (tmp_dir / "treatment-reward").write_text(reward_str)
-        (tmp_dir / "control-reward").write_text("0.0000")
+        (tmp_dir / "control-reward").write_text("N/A")
         (tmp_dir / "recommendation").write_text(rec)
 
         print(f"AEH OpenShell mean reward: {reward_str} (threshold={threshold})")

@@ -729,6 +729,32 @@ class OpenShellRunner(BaseRunner):
 
     name = "openshell"
 
+    def _config_with_judge_model(self, config: Path) -> Path:
+        """Write a sibling eval.yaml with models.judge overridden for LiteLLM.
+
+        Harbor applies ``--judge-model`` by rewriting the bundled eval.yaml.
+        OpenShell scores in-process via score.py, which prefers models.judge
+        over EVAL_JUDGE_MODEL, so the override must land in the config file.
+        Dataset paths stay relative to the original parent directory.
+        """
+        if not self.judge_model:
+            return config
+        try:
+            raw = yaml.safe_load(config.read_text()) or {}
+        except (OSError, yaml.YAMLError):
+            raw = {}
+        if not isinstance(raw, dict):
+            raw = {}
+        models = raw.get("models")
+        if not isinstance(models, dict):
+            models = {}
+            raw["models"] = models
+        models["judge"] = self.judge_model
+        patched = config.parent / f".eval.judge-override.{os.getpid()}.yaml"
+        patched.write_text(yaml.safe_dump(raw, sort_keys=False))
+        print(f"OpenShell judge override: models.judge={self.judge_model} ({patched})")
+        return patched
+
     def _execute(
         self,
         config: Path,
@@ -758,14 +784,17 @@ class OpenShellRunner(BaseRunner):
         runs_dir = Path(env_runs) if env_runs else output.parent.parent
         env = os.environ.copy()
         env["AGENT_EVAL_RUNS_DIR"] = str(runs_dir)
+        if self.judge_model:
+            env["EVAL_JUDGE_MODEL"] = self.judge_model
         actual = runs_dir / eval_dir_name(config, fallback=output.parent.name) / rid
+        patched = self._config_with_judge_model(config)
 
         cmd = [
             sys.executable,
             "-m",
             "agent_eval.openshell.run",
             "--config",
-            str(config),
+            str(patched),
             "--model",
             self.model,
             "--run-id",
@@ -778,7 +807,11 @@ class OpenShellRunner(BaseRunner):
         print(f"  actual run dir={actual}")
         print(f"  OPENSHELL_GATEWAY_ENDPOINT={env.get('OPENSHELL_GATEWAY_ENDPOINT')}")
         print(f"  AGENT_EVAL_OPENSHELL_IMAGE={env.get('AGENT_EVAL_OPENSHELL_IMAGE')}")
-        result = subprocess.run(cmd, env=env)
+        try:
+            result = subprocess.run(cmd, env=env)
+        finally:
+            if patched != config:
+                patched.unlink(missing_ok=True)
         _sync_output_dir(output, actual)
         return result.returncode
 

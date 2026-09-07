@@ -404,6 +404,35 @@ def _fmt(val: float | None, fmt: str = ".4f") -> str:
     return f"{val:{fmt}}" if val is not None else "N/A"
 
 
+def _is_likert_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= 5
+
+
+def _per_case_has_likert(result: AnalysisResult) -> bool:
+    per_case = result.per_case or {}
+    for case_data in per_case.values():
+        if not isinstance(case_data, dict):
+            continue
+        for rec in case_data.values():
+            if isinstance(rec, dict) and _is_likert_int(rec.get("value")):
+                return True
+            if _is_likert_int(rec):
+                return True
+    for tr in result.trials.get("treatment") or []:
+        for rec in (tr.judges or {}).values():
+            if isinstance(rec, dict) and _is_likert_int(rec.get("value")):
+                return True
+    return False
+
+
+def _fmt_judge_mean(mean: Any, pass_rate: Any, *, likert: bool) -> str:
+    if not isinstance(mean, (int, float)):
+        return "—"
+    if likert and pass_rate is None and 1.0 <= float(mean) <= 5.0 and float(mean) == int(mean):
+        return f"{mean:.2f}/5"
+    return _fmt(mean)
+
+
 def _sig_marker(p: float | None) -> str:
     if p is None:
         return ""
@@ -437,9 +466,13 @@ def _fmt_judge_cell(rec: Any) -> str:
         value = rec.get("value")
         if isinstance(value, bool):
             return "pass" if value else "fail"
+        if _is_likert_int(value):
+            return f"{value}/5"
         if isinstance(value, (int, float)):
             return str(value)
         return "—"
+    if _is_likert_int(rec):
+        return f"{rec}/5"
     return str(rec)
 
 
@@ -482,6 +515,12 @@ def render_markdown(result: AnalysisResult) -> str:
         lines.append(f"| Mean Reward | {_fmt(t.mean_reward)} |")
         lines.append(f"| Median Reward | {_fmt(t.median_reward)} |")
         lines.append(f"| Std Reward | {_fmt(t.std_reward)} |")
+        if _per_case_has_likert(result):
+            lines.append("")
+            lines.append(
+                "*LLM judges use a 1–5 Likert scale. Harbor reward maps "
+                "1→0.00 and 5→1.00; a raw mean of 1 is the floor, not a perfect 1.0.*"
+            )
     else:
         lines.append("| Metric | Treatment | Control |")
         lines.append("|--------|-----------|---------|")
@@ -616,7 +655,8 @@ def render_markdown(result: AnalysisResult) -> str:
                 mean = data.get("mean")
                 rate = data.get("pass_rate")
                 erred = data.get("errored_cases") or 0
-                mean_s = _fmt(mean) if isinstance(mean, (int, float)) else "—"
+                likert = _per_case_has_likert(result)
+                mean_s = _fmt_judge_mean(mean, rate, likert=likert)
                 rate_s = f"{rate:.0%}" if isinstance(rate, (int, float)) else "—"
                 lines.append(f"| {name} | {mean_s} | {rate_s} | {erred} |")
             else:

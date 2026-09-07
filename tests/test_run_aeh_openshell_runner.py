@@ -179,3 +179,12 @@ class TestEvaluateOpenshellJudgeDeps:
         assert "from scripts.aggregate_aeh import _extract_mean_reward" in script
         assert 'summary.get("mean_reward", 0.0)' not in script
         assert 'control-reward").write_text("0.0000")' not in script
+
+
+class TestEvaluateAehSingleParse:
+    def test_harbor_aeh_eval_uses_extract_mean_reward(self):
+        evaluate = Path(__file__).resolve().parents[1] / "pipeline" / "tasks" / "phases" / "evaluate.yaml"
+        spec = yaml.safe_load(evaluate.read_text())["spec"]
+        script = next(s["script"] for s in spec["steps"] if s["name"] == "aeh-eval")
+        assert "from scripts.aggregate_aeh import _extract_mean_reward" in script
+        assert 'summary.get("mean_reward", 0.0)' not in script

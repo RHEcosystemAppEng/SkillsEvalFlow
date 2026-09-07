@@ -119,7 +119,13 @@ def _compact_per_case(per_case: Any) -> dict[str, Any]:
 
 
 def _normalize_numeric_value(value: int | float) -> float:
-    """Map a numeric judge onto [0, 1] using the same Likert vs unit scale as aeh_scoring."""
+    """Map a numeric judge onto [0, 1] using the same Likert vs unit scale as aeh_scoring.
+
+    Integer 1–5 is a Likert score (Harbor ``score_range: [1, 5]``): 1 is the
+    floor (reward 0.0), 5 is the ceiling (reward 1.0). A unit-scale perfect
+    score must be the float ``1.0``, not the integer ``1`` — YAML ``value: 1``
+    from ``feedback_type: int`` is the worst rubric bucket, not 100%.
+    """
     if isinstance(value, bool):
         return 1.0 if value else 0.0
     if isinstance(value, int) and 1 <= value <= 5:
@@ -130,6 +136,36 @@ def _normalize_numeric_value(value: int | float) -> float:
     if 1.0 < v <= 5.0:
         return (v - 1.0) / 4.0
     return v
+
+
+def _is_likert_int(value: Any) -> bool:
+    """True for a 1–5 integer rubric score (not bool, not unit-scale 1.0)."""
+    return isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= 5
+
+
+def _fmt_likert_cell(value: Any) -> str:
+    if isinstance(value, bool):
+        return "pass" if value else "fail"
+    if _is_likert_int(value):
+        return f"{value}/5"
+    if isinstance(value, (int, float)):
+        return str(value)
+    return "—"
+
+
+def _fmt_judge_mean_for_log(mean: Any, pass_rate: Any) -> str:
+    """Label Likert means as /5 so a floor of 1 is not read as unit-scale 1.000."""
+    if not isinstance(mean, (int, float)):
+        return "—"
+    if pass_rate is None and (_is_likert_int(mean) or (isinstance(mean, float) and 1.0 <= mean <= 5.0)):
+        # Integer 1–5 or a 1.0–5.0 mean with no pass_rate is the Likert table.
+        if mean <= 5.0 and mean >= 1.0 and (pass_rate is None):
+            # Unit-scale means live in [0, 1]; a mean of exactly 1.0 with no
+            # pass_rate is still ambiguous, but AEH LLM rubrics in this pipeline
+            # are Likert. Show /5 when the mean is an integer-valued 1–5.
+            if float(mean) == int(mean) and 1 <= int(mean) <= 5:
+                return f"{mean:.2f}/5"
+    return f"{mean:.3f}"
 
 
 def _judge_errored(result: Any) -> bool:
@@ -322,7 +358,7 @@ def _log_judge_tables(report: dict[str, Any]) -> None:
             mean = data.get("mean")
             rate = data.get("pass_rate")
             erred = data.get("errored_cases") or 0
-            mean_s = f"{mean:.3f}" if isinstance(mean, (int, float)) else "—"
+            mean_s = _fmt_judge_mean_for_log(mean, rate) if isinstance(mean, (int, float)) else "—"
             rate_s = f"{rate:.0%}" if isinstance(rate, (int, float)) else "—"
             logger.info("  %-32s %10s %10s %8s", name, mean_s, rate_s, erred)
 
@@ -349,10 +385,8 @@ def _log_judge_tables(report: dict[str, Any]) -> None:
                 if isinstance(rec, dict):
                     if rec.get("error"):
                         cell = "ERR"
-                    elif isinstance(rec.get("value"), bool):
-                        cell = "pass" if rec["value"] else "fail"
-                    elif isinstance(rec.get("value"), (int, float)):
-                        cell = str(rec["value"])
+                    elif "value" in rec:
+                        cell = _fmt_likert_cell(rec.get("value"))
                 elif rec is not None:
                     cell = str(rec)
             cells.append(cell)

@@ -1479,34 +1479,22 @@ spec:
         
         # Parse results for finalize step (even when AEH_EXIT != 0)
         python3 - "$OUT_DIR" "$(workspaces.source.path)/_eval_tmp" "$AEH_THRESHOLD" <<'PARSE_AEH'
-        import json, sys, yaml
+        import sys
         from pathlib import Path
-        
+
+        from scripts.aggregate_aeh import _extract_mean_reward
+
         out_dir = Path(sys.argv[1])
         tmp_dir = Path(sys.argv[2])
         threshold = float(sys.argv[3])
-        
-        mean_reward = 0.0
-        
-        # Try summary.yaml first
-        summary_path = out_dir / "summary.yaml"
-        if summary_path.exists():
-            summary = yaml.safe_load(summary_path.read_text())
-            mean_reward = summary.get("mean_reward", 0.0)
-        
-        # Override from run_result.json if present
-        run_result_path = out_dir / "run_result.json"
-        if run_result_path.exists():
-            run_result = json.loads(run_result_path.read_text())
-            if "mean_reward" in run_result:
-                mean_reward = run_result["mean_reward"]
 
+        mean_reward = _extract_mean_reward(out_dir)
         rec = "pass" if (mean_reward is not None and mean_reward >= threshold) else "fail"
 
         tmp_dir.mkdir(parents=True, exist_ok=True)
-        reward_str = f"{mean_reward:.4f}" if mean_reward is not None else "0.0000"
+        reward_str = f"{mean_reward:.4f}" if mean_reward is not None else "N/A"
         (tmp_dir / "treatment-reward").write_text(reward_str)
-        (tmp_dir / "control-reward").write_text("0.0000")
+        (tmp_dir / "control-reward").write_text("N/A")
         (tmp_dir / "recommendation").write_text(rec)
 
         print(f"AEH mean reward: {reward_str} (threshold={threshold})")

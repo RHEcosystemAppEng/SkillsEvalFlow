@@ -49,6 +49,21 @@ class TestCaseReward:
     def test_empty(self):
         assert _case_reward({}) is None
 
+    def test_unit_scale_float_one_is_perfect(self):
+        assert _case_reward({"quality": {"value": 1.0, "judge_type": "llm"}}) == 1.0
+
+    def test_likert_one_is_floor_not_perfect(self):
+        """YAML ``value: 1`` from a 1–5 int rubric is the worst bucket (Harbor 0.0)."""
+        assert (
+            _case_reward(
+                {
+                    "analysis_accuracy": {"value": 1, "judge_type": "llm"},
+                    "response_received": {"value": True, "judge_type": "check"},
+                }
+            )
+            == 0.0
+        )
+
     def test_llm_error_does_not_use_boolean_as_quality(self):
         assert (
             _case_reward(
@@ -410,3 +425,73 @@ class TestExtractMeanReward:
         report = aggregate_single_run(run_dir)
         assert report["mean_reward"] == 1.0
         assert report["per_case"]["morning-briefing"]["prioritization_recall"]["value"] == 5
+
+    def test_float_ones_without_mean_reward_pass(self, tmp_path: Path):
+        run_dir = tmp_path / "run"
+        _write_summary(
+            run_dir,
+            {
+                "run_id": "run-1",
+                "per_case": {
+                    "morning-briefing": {
+                        "quality": {"value": 1.0, "judge_type": "llm"},
+                        "response_received": {"value": True, "judge_type": "check"},
+                    }
+                },
+                "judges": {"quality": {"mean": 1.0, "pass_rate": None, "errored_cases": 0}},
+            },
+        )
+        report = aggregate_single_run(run_dir)
+        assert report["mean_reward"] == 1.0
+        assert report["passed_cases"] == 1
+        assert report["recommendation"] == "pass"
+
+    def test_likert_floor_without_mean_reward_is_fail_not_perfect(self, tmp_path: Path):
+        """vf668 shape: int 1 LLM scores + passing booleans, no top-level mean_reward.
+
+        Harbor maps Likert 1/5 → reward 0.0. Treating those 1s as unit-scale
+        1.0 would pass a run whose rationales say the briefing was empty.
+        """
+        run_dir = tmp_path / "run"
+        _write_summary(
+            run_dir,
+            {
+                "run_id": "aeh-openshell-openclaw-vf668",
+                "per_case": {
+                    "analysis-panel": {
+                        "analysis_accuracy": {"value": 1, "judge_type": "llm"},
+                        "analysis_citations": {"value": 1, "judge_type": "llm"},
+                        "analysis_independent_judgment": {"value": 1, "judge_type": "llm"},
+                        "response_received": {"value": True, "judge_type": "check"},
+                        "used_m365_tools": {"value": True, "judge_type": "check"},
+                    },
+                    "morning-briefing": {
+                        "connection_precision": {"value": 1, "judge_type": "llm"},
+                        "connection_recall": {"value": 1, "judge_type": "llm"},
+                        "prioritization_precision": {"value": 1, "judge_type": "llm"},
+                        "prioritization_recall": {"value": 1, "judge_type": "llm"},
+                        "prioritization_relevance": {"value": 1, "judge_type": "llm"},
+                        "response_received": {"value": True, "judge_type": "check"},
+                        "used_m365_tools": {"value": True, "judge_type": "check"},
+                    },
+                },
+                "judges": {
+                    "analysis_accuracy": {"mean": 1.0, "pass_rate": None, "errored_cases": 0},
+                    "response_received": {"mean": 1.0, "pass_rate": 1.0, "errored_cases": 0},
+                    "used_m365_tools": {"mean": 1.0, "pass_rate": 1.0, "errored_cases": 0},
+                },
+            },
+        )
+        assert _extract_mean_reward(run_dir) == 0.0
+        report = aggregate_single_run(run_dir, eval_engine="aeh_openshell_openclaw")
+        assert report["mean_reward"] == 0.0
+        assert report["summary"]["treatment"]["n_passed"] == 0
+        assert report["summary"]["treatment"]["n_failed"] == 2
+        assert report["recommendation"] == "fail"
+        assert report["trials"]["treatment"][0]["reward"] == 0.0
+        result = AnalysisResult.model_validate(report)
+        md = render_markdown(result)
+        assert "1/5" in md
+        assert "floor" in md.lower()
+        assert "| analysis_accuracy | 1.00/5 |" in md
+        assert "| response_received | 1.0000 | 100% |" in md

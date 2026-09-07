@@ -410,7 +410,34 @@ Forge OpenClaw evals talk to the **cluster NVIDIA OpenShell** already installed 
 
 Sample in-repo: `submissions/openclaw-forge/` (`eval_engine: aeh_openshell_openclaw`, `runner.type: openclaw`).
 
-Requires optional Secret `openshell-credentials` (`M365_*`) in the **same namespace as the PipelineRun**. Client mTLS (`openshell-mtls`) is not required while the cluster gateway has TLS disabled. Override `aeh-openshell-image` to a GuyZivRH AEH image that imports `agent_eval.openshell` (stock `v1.0.x` cannot).
+Requires Secret `openshell-credentials` in the **same namespace as the PipelineRun** for Forge Graph scenes (`submissions/openclaw-forge`, `m365.seed: external`). Without `M365_ACCESS_TOKEN` and `M365_USER`, Evaluate now fails closed instead of producing a 1/5 scorecard of auth refusals.
+
+Required keys: `M365_ACCESS_TOKEN`, `M365_USER`. Optional: `M365_TENANT_ID`, `M365_CLIENT_ID`, `M365_CLIENT_SECRET`. `M365_AUTH_HEADER_FILE` and `M365_GRAPH_CURL` are **not** Secret keys — AEH writes them inside the sandbox from the access token.
+
+Do **not** `oc apply` `config/forge-saw/secret-openshell-credentials.yaml` while it still contains `<replace-with-…>` placeholders, and do not commit tokens.
+
+```bash
+# from a shell that already has real Graph env (values never printed by the helper)
+./config/forge-saw/create-openshell-credentials.sh
+# or:
+oc create secret generic openshell-credentials -n guy-ziv-evalflow \
+  --from-literal=M365_ACCESS_TOKEN=... \
+  --from-literal=M365_USER=... \
+  --from-literal=M365_TENANT_ID=... \
+  --from-literal=M365_CLIENT_ID=... \
+  --from-literal=M365_CLIENT_SECRET=...
+```
+
+Client mTLS (`openshell-mtls`) is not required while the cluster gateway has TLS disabled.
+
+**Use the OpenShell profile** (`abevalflow-pipeline-openshell`) instead of toggling `enable-ai-generation` / quality-review flags on `abevalflow-pipeline-dev`. That Pipeline is prepare → evaluate → analyze → store and **does not include the test cube** (security scan, quality review, AEH eval-check) or red-team. Harbor AEH keeps `abevalflow-pipeline` / `abevalflow-pipeline-dev`.
+
+```bash
+oc apply -f pipeline/pipelines/ci-pipeline-openshell.yaml
+oc create -n guy-ziv-evalflow -f pipeline/runs/openshell-openclaw-pipelinerun.yaml
+```
+
+Or inline:
 
 ```bash
 oc create -n guy-ziv-evalflow -f - <<'YAML'
@@ -420,22 +447,22 @@ metadata:
   generateName: aeh-openshell-openclaw-
 spec:
   pipelineRef:
-    name: abevalflow-pipeline-dev
+    name: abevalflow-pipeline-openshell
   params:
-    - name: repo-url
-      value: "https://github.com/RHEcosystemAppEng/agentic_eval_flow.git"
-    - name: revision
-      value: "feat/aeh-openshell-openclaw"
     - name: submission-dir
       value: "openclaw-forge"
     - name: eval-engine
       value: "aeh_openshell_openclaw"
-    - name: aeh-mode
-      value: "single"
-    - name: aeh-openshell-image
-      value: "quay.io/ecosystem-appeng/agent-eval-harness:v1.0.3"
+    - name: revision
+      value: "feat/aeh-openshell-openclaw"
+    - name: pipeline-repo-revision
+      value: "feat/aeh-openshell-openclaw"
     - name: openshell-gateway-endpoint
       value: "http://openshell.openshell.svc.cluster.local:8080"
+    - name: openshell-sandbox-image
+      value: "quay.io/aipcc/base-images/agentic/openclaw:0.0.1-1787755593"
+    - name: aeh-openshell-image
+      value: "registry.access.redhat.com/ubi9/python-311:9.6"
     - name: llm-model
       value: "claude-sonnet"
     - name: llm-api-base
@@ -460,7 +487,11 @@ spec:
 YAML
 ```
 
-Konflux evaluate has no AEH OpenShell path; cluster `ci-pipeline` is enough for this engine.
+Profile defaults (override only what you need): `eval-engine=aeh_openshell_openclaw`, `submission-dir=openclaw-forge`, sandbox image pin `quay.io/aipcc/base-images/agentic/openclaw:0.0.1-1787755593`, orchestrator `registry.access.redhat.com/ubi9/python-311:9.6`, `enable-ai-generation=false`. Harness revision defaults to `feat/aeh-openshell-openclaw` (the OpenShell module lives there). After this branch merges, `revision` / `pipeline-repo-revision` can stay at Pipeline default `main`.
+
+**Store / artifacts:** OpenShell reuses the AEH MinIO prefix `{prefix}/debug/aeh/<run-id>/` (same as Harbor AEH run trees). Harbor `_eval_tmp` debug (`debug/harbor/`) is N/A. Cluster Postgres must have **Alembic 005** (`evaluation_runs.eval_engine` varchar(50)) before store-to-db succeeds — `aeh_openshell_openclaw` is 22 characters. The store Task uploads MinIO **before** the DB insert so a varchar(10) failure does not skip artifacts; the PipelineRun still fails until 005 is applied. See [persistence.md](persistence.md) and `alembic/versions/005_widen_eval_engine.py`.
+
+Konflux evaluate has no AEH OpenShell path; cluster `ci-pipeline-openshell` is enough for this engine.
 
 #### AEH Pairwise A/B Testing
 

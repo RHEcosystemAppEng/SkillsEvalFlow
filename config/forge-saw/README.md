@@ -112,7 +112,15 @@ oc create secret generic openshell-mtls -n "$EVAL_NS" \
 Evaluate mounts that Secret at `$HOME/.config/openshell` and rearranges files
 into `gateways/abeval-saw/mtls/`.
 
-Graph credentials (not in git):
+Graph credentials (not in git). Forge OpenClaw needs a **real** token; the
+placeholder YAML must not be applied:
+
+```bash
+# Preferred: export M365_ACCESS_TOKEN and M365_USER, then
+./config/forge-saw/create-openshell-credentials.sh
+```
+
+Or:
 
 ```bash
 oc create secret generic openshell-credentials -n guy-ziv-evalflow \
@@ -123,7 +131,17 @@ oc create secret generic openshell-credentials -n guy-ziv-evalflow \
   --from-literal=M365_CLIENT_SECRET=...
 ```
 
-Placeholder templates (no real tokens): `secret-*.yaml.template` in this directory.
+Required: `M365_ACCESS_TOKEN`, `M365_USER`. Optional: tenant/client keys.
+`M365_AUTH_HEADER_FILE` / `M365_GRAPH_CURL` are created in the sandbox from the
+access token — do not put them in the Secret. Template (placeholders only):
+`secret-openshell-credentials.yaml.template`.
+
+Verify keys without dumping values:
+
+```bash
+oc get secret openshell-credentials -n guy-ziv-evalflow -o json \
+  | python3 -c 'import json,sys; d=json.load(sys.stdin); print("\n".join(sorted((d.get("data") or {}))))'
+```
 
 ## Preflight vs install
 

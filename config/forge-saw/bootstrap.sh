@@ -154,7 +154,7 @@ echo
 echo "Next (ops, not evaluate):"
 echo "  1. Copy mTLS client files off the VM (see $SCRIPT_DIR/README.md)"
 echo "  2. Create Secret openshell-mtls in $EVAL_NS (PipelineRun namespace)"
-echo "  3. Create Secret openshell-credentials in $EVAL_NS (M365_*)"
-echo "  4. Trigger a PipelineRun with eval-engine=aeh_openshell_openclaw"
+echo "  3. Create Secret openshell-credentials in $EVAL_NS (see $SCRIPT_DIR/create-openshell-credentials.sh)"
+echo "  4. Trigger a PipelineRun only after that Secret has real M365_ACCESS_TOKEN + M365_USER"
 echo
 echo "This script lives at $SCRIPT_DIR relative to $REPO_ROOT."

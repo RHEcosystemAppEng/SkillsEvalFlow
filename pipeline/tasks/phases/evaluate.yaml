@@ -224,7 +224,10 @@ spec:
     - name: openshell-credentials-secret
       type: string
       default: "openshell-credentials"
-      description: Secret with M365_* keys (optional keys)
+      description: >-
+        Secret with M365_ACCESS_TOKEN and M365_USER (optional TENANT_ID /
+        CLIENT_ID / CLIENT_SECRET). Required for openclaw-forge Graph scenes.
+        Keys are optional for Crabline-only OpenShell evals.
   volumes:
     - name: openshell-mtls
       secret:
@@ -1585,6 +1588,14 @@ spec:
         - name: openshell-mtls
           mountPath: /tmp/.config/openshell
           readOnly: true
+      envFrom:
+        # Inject every key from openshell-credentials (M365_*). optional so
+        # Crabline OpenShell evals still start when the Secret is absent.
+        # File-auth paths (M365_AUTH_HEADER_FILE, M365_GRAPH_CURL) are not
+        # Secret keys — AEH writes them in the sandbox from M365_ACCESS_TOKEN.
+        - secretRef:
+            name: $(params.openshell-credentials-secret)
+            optional: true
       env:
         - name: HOME
           value: /tmp
@@ -1749,6 +1760,95 @@ spec:
         SUBMISSION_DIR="$(workspaces.source.path)/submissions/$(params.submission-dir)"
         SUBMISSION_NAME="$(params.submission-name)"
         RUN_ID="$(params.pipeline-run-id)"
+
+        echo "=== M365 Graph credentials preflight ==="
+        python3 - "$SUBMISSION_DIR" <<'M365PRE'
+        import os, sys
+        from pathlib import Path
+
+        try:
+            import yaml
+        except ImportError:
+            print("WARN: pyyaml missing; skipping M365 eval.yaml inspection")
+            sys.exit(0)
+
+        def usable(value):
+            if not value or not str(value).strip():
+                return False
+            low = str(value).strip().lower()
+            return not any(
+                marker in low
+                for marker in ("<replace-with", "changeme", "placeholder")
+            )
+
+        sub = Path(sys.argv[1])
+        eval_path = sub / "eval.yaml"
+        if not eval_path.is_file():
+            print(f"WARN: {eval_path} missing; skipping M365 preflight")
+            sys.exit(0)
+        cfg = yaml.safe_load(eval_path.read_text()) or {}
+        exec_env = (cfg.get("execution") or {}).get("env") or {}
+        needed = []
+        if any(str(k).startswith("M365_") for k in exec_env):
+            needed.extend(["M365_ACCESS_TOKEN", "M365_USER"])
+        scene_name = cfg.get("scene")
+        if scene_name:
+            scene_path = sub / "scenes" / f"{scene_name}.yaml"
+            if scene_path.is_file():
+                scene = yaml.safe_load(scene_path.read_text()) or {}
+                m365 = scene.get("m365") or {}
+                user = m365.get("user")
+                if user and not usable(os.environ.get("M365_USER")):
+                    os.environ["M365_USER"] = str(user)
+                    print(f"M365_USER defaulted from scene ({user})")
+                if str(m365.get("seed") or "") == "external":
+                    for key in ("M365_ACCESS_TOKEN", "M365_USER"):
+                        if key not in needed:
+                            needed.append(key)
+        if not needed:
+            print("M365 not required for this submission")
+            sys.exit(0)
+        missing = [k for k in needed if not usable(os.environ.get(k))]
+        if missing:
+            secret = os.environ.get(
+                "OPENSHELL_CREDENTIALS_SECRET", "openshell-credentials"
+            )
+            print(
+                "ERROR: OpenClaw Forge needs live Microsoft Graph credentials, "
+                f"but these were unset or placeholders: {', '.join(missing)}.",
+                file=sys.stderr,
+            )
+            print(
+                "Create Secret openshell-credentials in the PipelineRun namespace "
+                "(do not apply the placeholder template, do not commit tokens):",
+                file=sys.stderr,
+            )
+            print(
+                "  oc create secret generic openshell-credentials "
+                "-n guy-ziv-evalflow \\\n"
+                "    --from-literal=M365_ACCESS_TOKEN=... \\\n"
+                "    --from-literal=M365_USER=... \\\n"
+                "    --from-literal=M365_TENANT_ID=... \\\n"
+                "    --from-literal=M365_CLIENT_ID=... \\\n"
+                "    --from-literal=M365_CLIENT_SECRET=...",
+                file=sys.stderr,
+            )
+            print(
+                "Required keys: M365_ACCESS_TOKEN, M365_USER. "
+                "Optional: M365_TENANT_ID, M365_CLIENT_ID, M365_CLIENT_SECRET. "
+                "M365_AUTH_HEADER_FILE and M365_GRAPH_CURL are created in the "
+                "sandbox from M365_ACCESS_TOKEN — they are not Secret keys. "
+                f"Expected Secret name: {secret}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        print("M365 Graph credentials present:", ", ".join(needed))
+        M365PRE
+        echo "M365_ACCESS_TOKEN: ${M365_ACCESS_TOKEN:+present}"
+        echo "M365_USER: ${M365_USER:+present}"
+        echo "M365_TENANT_ID: ${M365_TENANT_ID:+present}"
+        echo "M365_CLIENT_ID: ${M365_CLIENT_ID:+present}"
+        echo "M365_CLIENT_SECRET: ${M365_CLIENT_SECRET:+present}"
 
         # Reports leaf matches EvalConfig.eval_name(): skill, then name, then submission
         SKILL_NAME=$(python3 -c "

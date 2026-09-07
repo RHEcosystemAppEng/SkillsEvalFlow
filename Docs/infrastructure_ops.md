@@ -147,15 +147,19 @@ http://openshell.openshell.svc.cluster.local:8080
 ```
 
 That Service is reachable from `guy-ziv-evalflow` (gRPC `:8080`, TLS disabled
-on the current gateway.toml). Optional Secret `openshell-credentials` (`M365_*`)
-still belongs in the PipelineRun namespace. `openshell-mtls` is optional while
+on the current gateway.toml). Secret `openshell-credentials` (`M365_ACCESS_TOKEN`,
+`M365_USER`, optional `M365_TENANT_ID` / `M365_CLIENT_ID` / `M365_CLIENT_SECRET`)
+belongs in the PipelineRun namespace for Forge Graph evals. Evaluate fails
+closed if those required keys are missing. `openshell-mtls` is optional while
 the gateway has `disable_tls = true`.
 
 forge-saw (KubeVirt VM on `:17670`) is a different OpenShell host for clusters
 that run OpenShift Virtualization. Do not Helm-install it on this ROSA cluster.
 See `config/forge-saw/README.md` only if you are targeting a CNV cluster.
 
-Trigger example: [trigger_guide.md](trigger_guide.md) (`eval-engine=aeh_openshell_openclaw`).
+Trigger example: [trigger_guide.md](trigger_guide.md) (`abevalflow-pipeline-openshell`, `eval-engine=aeh_openshell_openclaw`).
+
+**Store:** cluster Postgres must have Alembic **005** (`evaluation_runs.eval_engine` varchar(50)) or the DB insert fails (`aeh_openshell_openclaw` is 22 characters). OpenShell artifacts reuse MinIO `debug/aeh/`; Harbor `_eval_tmp` debug is N/A.
 
 ## Cleanup CronJob
 

@@ -181,6 +181,38 @@ class TestEvaluateOpenshellJudgeDeps:
         assert 'control-reward").write_text("0.0000")' not in script
 
 
+class TestEvaluateOpenshellM365:
+    def test_openshell_step_forwards_credentials_secret(self):
+        evaluate = Path(__file__).resolve().parents[1] / "pipeline" / "tasks" / "phases" / "evaluate.yaml"
+        spec = yaml.safe_load(evaluate.read_text())["spec"]
+        assert any(p["name"] == "openshell-credentials-secret" for p in spec["params"])
+        step = next(s for s in spec["steps"] if s["name"] == "aeh-openshell-eval")
+        env_from = step.get("envFrom") or []
+        assert env_from, "aeh-openshell-eval must envFrom openshell-credentials"
+        secret_refs = [item.get("secretRef") or {} for item in env_from]
+        assert any(
+            ref.get("name") == "$(params.openshell-credentials-secret)"
+            and ref.get("optional") is True
+            for ref in secret_refs
+        )
+        env = {item["name"]: item for item in step["env"]}
+        for key in (
+            "M365_ACCESS_TOKEN",
+            "M365_USER",
+            "M365_TENANT_ID",
+            "M365_CLIENT_ID",
+            "M365_CLIENT_SECRET",
+        ):
+            ref = env[key]["valueFrom"]["secretKeyRef"]
+            assert ref["name"] == "$(params.openshell-credentials-secret)"
+            assert ref["key"] == key
+            assert ref["optional"] is True
+        assert "M365PRE" in step["script"]
+        assert "M365 Graph credentials preflight" in step["script"]
+        assert "oc create secret generic openshell-credentials" in step["script"]
+        assert "M365_AUTH_HEADER_FILE and M365_GRAPH_CURL are created" in step["script"]
+
+
 class TestEvaluateAehSingleParse:
     def test_harbor_aeh_eval_uses_extract_mean_reward(self):
         evaluate = Path(__file__).resolve().parents[1] / "pipeline" / "tasks" / "phases" / "evaluate.yaml"
